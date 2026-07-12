@@ -2,6 +2,7 @@ import os
 import joblib
 import numpy as np
 from flask import Blueprint, request, jsonify
+from ..auth import require_auth
 
 ml_bp = Blueprint("ml", __name__)
 
@@ -42,6 +43,7 @@ def score_to_label(score: float) -> tuple[str, str]:
 
 
 @ml_bp.route("/predict", methods=["POST"])
+@require_auth
 def predict():
     data = request.get_json()
     calories = float(data.get("calories", 500))
@@ -51,9 +53,9 @@ def predict():
     cat_code = CATEGORY_MAP.get(category, 2)
     features = np.array([[calories, cost, cat_code]])
 
-    model = load_model()
-    if model is not None:
-        score = float(np.clip(model.predict(features)[0], 0, 100))
+    model_inst = load_model()
+    if model_inst is not None:
+        score = float(np.clip(model_inst.predict(features)[0], 0, 100))
     else:
         # Fallback heuristic if model not trained yet
         healthy_cats = {"Vegetable", "Fruit", "Protein", "Healthy"}

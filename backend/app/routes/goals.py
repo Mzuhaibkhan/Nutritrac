@@ -1,16 +1,12 @@
 import os
 import json
 import re
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from collections import defaultdict
-import google.generativeai as genai
-from flask import Blueprint, request, jsonify
-from ..supabase_client import supabase
-from dotenv import load_dotenv
-
-load_dotenv()
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
-model = genai.GenerativeModel("gemini-1.5-flash")
+from flask import Blueprint, request, jsonify, g
+from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
+from ..auth import require_auth
+from ..gemini import model, gemini_limiter, cache_key, get_cached, set_cached
 
 goals_bp = Blueprint("goals", __name__)
 
@@ -52,13 +48,23 @@ Return ONLY valid JSON with NO extra text:
   "projected_progress": "What the user can expect after {target_weeks} weeks"
 }}"""
 
+# Cache for meal plans by goal hash
+_meal_plan_cache = {}
 
-def _get_avg_intake() -> dict:
+
+def _goal_hash(goal: dict) -> str:
+    import hashlib
+    key_fields = sorted((k, v) for k, v in goal.items() if k not in ("goal_description", "user_id"))
+    return hashlib.md5(str(key_fields).encode()).hexdigest()
+
+
+def _get_avg_intake(user_id: str) -> dict:
+    db = get_db()
     from_date = str(date.today() - timedelta(days=30))
-    rows = (supabase.table("food_logs")
-            .select("calories,protein_g,carbs_g,fats_g,cost")
-            .gte("log_date", from_date)
-            .execute().data)
+    rows = list(db.food_logs.find({
+        "user_id": user_id,
+        "log_date": {"$gte": from_date}
+    }))
     if not rows:
         return {"calories": 2000, "protein": 100, "carbs": 250, "fats": 70, "spend": 20}
     totals = defaultdict(float)
@@ -73,22 +79,54 @@ def _get_avg_intake() -> dict:
 
 
 @goals_bp.route("/goals", methods=["POST"])
+@require_auth
 def save_goal():
     data = request.get_json()
-    result = supabase.table("user_goals").insert(data).execute()
-    return jsonify(result.data[0] if result.data else data)
+    db = get_db()
+    
+    goal_id = new_id()
+    data["id"] = goal_id
+    data["user_id"] = g.user_id
+    data["created_at"] = now_iso()
+    
+    db.user_goals.insert_one(data)
+    return jsonify(serialize_doc(data))
 
 
 @goals_bp.route("/goals", methods=["GET"])
+@require_auth
 def get_goal():
-    result = supabase.table("user_goals").select("*").order("created_at", desc=True).limit(1).execute()
-    return jsonify(result.data[0] if result.data else {})
+    db = get_db()
+    goal = db.user_goals.find_one({"user_id": g.user_id}, sort=[("created_at", -1)])
+    return jsonify(serialize_doc(goal) if goal else {})
 
 
 @goals_bp.route("/goals/meal-plan", methods=["POST"])
+@require_auth
 def generate_meal_plan():
     goal = request.get_json()
-    avg = _get_avg_intake()
+    db = get_db()
+
+    # Check meal plan cache
+    goal_h = _goal_hash(goal)
+    if goal_h in _meal_plan_cache:
+        cached_plan = _meal_plan_cache[goal_h]
+        # Still save to DB
+        goal["id"] = new_id()
+        goal["user_id"] = g.user_id
+        goal["created_at"] = now_iso()
+        try:
+            db.user_goals.insert_one(goal)
+            goal_id = goal["id"]
+        except Exception:
+            goal_id = None
+        return jsonify({"plan": cached_plan, "goal_id": goal_id, "cached": True})
+
+    # Rate limit
+    if not gemini_limiter.allow():
+        return jsonify({"error": "Rate limit reached. Please wait a moment."}), 429
+
+    avg = _get_avg_intake(g.user_id)
 
     prompt = MEAL_PLAN_PROMPT.format(
         avg_calories=avg.get("calories", 2000),
@@ -112,22 +150,33 @@ def generate_meal_plan():
         raw = re.sub(r"```$", "", raw, flags=re.MULTILINE).strip()
         plan = json.loads(raw)
 
-        # Save goal + plan
-        goal_result = supabase.table("user_goals").insert(goal).execute()
-        goal_id = goal_result.data[0]["id"] if goal_result.data else None
-        if goal_id:
-            supabase.table("meal_plans").insert({
-                "goal_id": goal_id,
-                "week_label": f"Week of {date.today()}",
-                "plan_json": plan,
-            }).execute()
+        # Cache the plan
+        _meal_plan_cache[goal_h] = plan
 
-        return jsonify({"plan": plan, "goal_id": goal_id})
+        # Save goal + plan
+        goal["id"] = new_id()
+        goal["user_id"] = g.user_id
+        goal["created_at"] = now_iso()
+        db.user_goals.insert_one(goal)
+        
+        meal_plan_entry = {
+            "id": new_id(),
+            "user_id": g.user_id,
+            "goal_id": goal["id"],
+            "week_label": f"Week of {date.today()}",
+            "plan_json": plan,
+            "generated_at": now_iso()
+        }
+        db.meal_plans.insert_one(meal_plan_entry)
+
+        return jsonify({"plan": plan, "goal_id": goal["id"]})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @goals_bp.route("/goals/meal-plans", methods=["GET"])
+@require_auth
 def list_meal_plans():
-    result = supabase.table("meal_plans").select("*").order("generated_at", desc=True).limit(10).execute()
-    return jsonify(result.data)
+    db = get_db()
+    plans = db.meal_plans.find({"user_id": g.user_id}).sort("generated_at", -1).limit(10)
+    return jsonify(serialize_docs(plans))

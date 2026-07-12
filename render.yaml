@@ -1,0 +1,50 @@
+services:
+  # Backend Flask API
+  - type: web
+    name: nutritrack-api
+    env: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn --chdir backend run:app
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: CORS_ORIGINS
+        value: https://nutritrack.onrender.com # Change to your frontend Render URL
+      - key: MONGODB_URI
+        sync: false # Set in Render Dashboard
+      - key: MONGODB_DB_NAME
+        value: nutritrack
+      - key: GEMINI_API_KEY
+        sync: false # Set in Render Dashboard (optional, falls back to OpenAI, Grok, or offline heuristics)
+      - key: OPENAI_API_KEY
+        sync: false # Set in Render Dashboard (optional)
+      - key: GROK_API_KEY
+        sync: false # Set in Render Dashboard (optional)
+      - key: SUPABASE_URL
+        sync: false # Set in Render Dashboard
+      - key: SUPABASE_KEY
+        sync: false # Set in Render Dashboard (optional, fallback for service role key)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Set in Render Dashboard (optional, preferred over SUPABASE_KEY)
+      - key: STRAVA_CLIENT_ID
+        sync: false # Set in Render Dashboard (optional)
+      - key: STRAVA_CLIENT_SECRET
+        sync: false # Set in Render Dashboard (optional)
+      - key: STRAVA_REDIRECT_URI
+        value: https://nutritrack-api.onrender.com/api/strava/callback
+
+  # Frontend Next.js Static Site
+  - type: web
+    name: nutritrack-web
+    env: node
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://nutritrack-api.onrender.com
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://nutritrack-web.onrender.com
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false # Set in Render Dashboard (same as backend)
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false # Set in Render Dashboard (same as backend)

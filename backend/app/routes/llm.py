@@ -1,30 +1,10 @@
 import os
 import json
 import re
-import google.generativeai as genai
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from ..supabase_client import supabase
-from dotenv import load_dotenv
-
-# Robustly load .env from the project root
-load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
-
-# Configure Gemini
-api_key = os.environ.get("GEMINI_API_KEY", "")
-genai.configure(api_key=api_key)
-
-# Safety settings: Ensure Gemini doesn't block nutrition analysis
-safety_settings = [
-    {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-    {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-]
-
-model = genai.GenerativeModel(
-    model_name="gemini-flash-latest",
-    safety_settings=safety_settings
-)
+from ..auth import require_auth
+from ..gemini import model, gemini_limiter, cache_key, get_cached, set_cached
 
 llm_bp = Blueprint("llm", __name__)
 
@@ -64,6 +44,7 @@ def extract_json(text):
         return json.loads(clean)
 
 @llm_bp.route("/analyze", methods=["POST"])
+@require_auth
 def analyze():
     data = request.get_json()
     text = data.get("text", "").strip()
@@ -72,15 +53,38 @@ def analyze():
     if not text:
         return jsonify({"error": "No description provided"}), 400
 
+    # Check cache first
+    key = cache_key(text, meal_type)
+    cached = get_cached(key)
+    if cached:
+        # Return cached result but still save a new log entry
+        nutrition = dict(cached)
+        nutrition["meal_type"] = meal_type
+        nutrition["user_id"] = g.user_id
+        try:
+            supabase.table("food_logs").insert(nutrition).execute()
+        except Exception as db_err:
+            print(f"Database error (skipping save): {db_err}")
+        return jsonify(nutrition)
+
+    # Rate limit check
+    if not gemini_limiter.allow():
+        return jsonify({"error": "Rate limit reached. Please wait a moment before trying again."}), 429
+
     try:
         # Call Gemini
         response = model.generate_content(NUTRITION_PROMPT.format(text=text, meal_type=meal_type))
-        
+
         if not response.text:
             return jsonify({"error": "Gemini returned an empty response. Check your API key or quota."}), 500
-            
+
         nutrition = extract_json(response.text)
         nutrition["meal_type"] = meal_type
+        nutrition["user_id"] = g.user_id
+
+        # Cache the result (without user_id)
+        cache_data = {k: v for k, v in nutrition.items() if k != "user_id"}
+        set_cached(key, cache_data)
 
         # Attempt to save to Supabase
         try:

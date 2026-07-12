@@ -1,25 +1,38 @@
-from flask import Blueprint, request, jsonify
-from ..supabase_client import supabase
+from datetime import date
+from flask import Blueprint, request, jsonify, g
+from ..mongo_client import get_db, serialize_docs, serialize_doc
+from ..auth import require_auth
 
 food_bp = Blueprint("food", __name__)
 
 
 @food_bp.route("/logs", methods=["GET"])
+@require_auth
 def get_logs():
-    date = request.args.get("date")
+    db = get_db()
+    date_filter = request.args.get("date")
     from_date = request.args.get("from")
     to_date = request.args.get("to")
 
-    query = supabase.table("food_logs").select("*")
-    if date:
-        query = query.eq("log_date", date)
-    elif from_date and to_date:
-        query = query.gte("log_date", from_date).lte("log_date", to_date)
-    result = query.order("logged_at", desc=True).execute()
-    return jsonify(result.data)
+    try:
+        query = {"user_id": g.user_id}
+        if date_filter:
+            query["log_date"] = date_filter
+        elif from_date and to_date:
+            query["log_date"] = {"$gte": from_date, "$lte": to_date}
+
+        docs = db.food_logs.find(query).sort("logged_at", -1)
+        return jsonify(serialize_docs(docs))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @food_bp.route("/logs/<log_id>", methods=["DELETE"])
+@require_auth
 def delete_log(log_id):
-    supabase.table("food_logs").delete().eq("id", log_id).execute()
-    return jsonify({"success": True})
+    try:
+        db = get_db()
+        db.food_logs.delete_one({"id": log_id, "user_id": g.user_id})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
