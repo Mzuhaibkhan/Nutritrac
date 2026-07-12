@@ -12,6 +12,7 @@ const RANGES = [
   { key: "month", label: "Month" },
   { key: "3m", label: "3M" },
   { key: "6m", label: "6M" },
+  { key: "year", label: "Year" },
 ];
 
 export default function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {

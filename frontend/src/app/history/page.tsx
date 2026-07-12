@@ -2,14 +2,15 @@
 import { useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 interface FoodLog { id: string; food_item: string; calories: number; protein_g: number; carbs_g: number; fats_g: number; cost: number; category: string; meal_type: string; logged_at: string; }
 
 function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
 
 export default function HistoryPage() {
+  const { user } = useAuth();
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -18,27 +19,31 @@ export default function HistoryPage() {
   const [logs, setLogs] = useState<FoodLog[]>([]);
 
   useEffect(() => {
+    if (!user) return;
     const fetchMonth = async () => {
       const from = `${year}-${String(month + 1).padStart(2, "0")}-01`;
       const to = `${year}-${String(month + 1).padStart(2, "0")}-${String(getDaysInMonth(year, month)).padStart(2, "0")}`;
       try {
-        const res = await fetch(`${API}/api/analytics/daily-summary?from=${from}&to=${to}`);
+        const res = await apiFetch(`/api/analytics/daily-summary?from=${from}&to=${to}`);
         if (res.ok) setDayData(await res.json());
-      } catch { /* no-op */ }
+      } catch (err) {
+        console.error("Month fetch error", err);
+      }
     };
     fetchMonth();
-  }, [year, month]);
+  }, [year, month, user]);
 
   useEffect(() => {
+    if (!user) return;
     const fetchDay = async () => {
       try {
-        const res = await fetch(`${API}/api/logs?date=${selectedDate}`);
+        const res = await apiFetch(`/api/logs?date=${selectedDate}`);
         if (res.ok) setLogs(await res.json());
         else setLogs([]);
       } catch { setLogs([]); }
     };
     fetchDay();
-  }, [selectedDate]);
+  }, [selectedDate, user]);
 
   const days = getDaysInMonth(year, month);
   const firstDay = new Date(year, month, 1).getDay();
@@ -119,7 +124,7 @@ export default function HistoryPage() {
                             {new Date(log.logged_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} — {log.meal_type}
                           </p>
                         </div>
-                        <span className="tag tag-2" style={{ fontSize: "0.65rem" }}>${log.cost}</span>
+                        <span className="tag tag-2" style={{ fontSize: "0.65rem" }}>₹{log.cost}</span>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem" }}>
                         {[{ l: "Cal", v: log.calories, u: "kcal", c: "var(--accent-3)" },
@@ -127,7 +132,7 @@ export default function HistoryPage() {
                           { l: "Carb", v: log.carbs_g, u: "g", c: "var(--accent-4)" },
                           { l: "Fat", v: log.fats_g, u: "g", c: "var(--accent-2)" }].map(s => (
                           <div key={s.l} style={{ backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "0.4rem 0.6rem" }}>
-                            <p className="mono" style={{ color: "var(--base-secondary-dark)", fontSize: "0.6rem" }}>{s.l}</p>
+                            <p className="mono" style={{ color: "var(--base-secondary-dark)", fontSize: "0.6" }}>{s.l}</p>
                             <p style={{ fontFamily: "Barlow Condensed", fontWeight: 900, fontSize: "1.1rem", color: s.c }}>{s.v}{s.u}</p>
                           </div>
                         ))}

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { apiPost } from "@/lib/api";
 
 interface Goal {
   daily_calorie_goal: number;
@@ -32,7 +31,7 @@ export default function GoalForm() {
     daily_protein_goal_g: 150,
     daily_carbs_goal_g: 250,
     daily_fats_goal_g: 65,
-    daily_budget_usd: 30,
+    daily_budget_usd: 500, // INR Budget
     goal_description: "",
     target_weeks: 4,
   });
@@ -41,6 +40,7 @@ export default function GoalForm() {
   const [saved, setSaved] = useState(false);
   const [activeDay, setActiveDay] = useState(0);
   const [flippedDay, setFlippedDay] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   const field = (label: string, key: keyof Goal, type = "number", suffix = "") => (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
@@ -52,28 +52,34 @@ export default function GoalForm() {
   );
 
   const saveGoal = async () => {
-    await fetch(`${API}/api/goals`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(goal),
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      setError("");
+      const res = await apiPost("/api/goals", goal);
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } else {
+        throw new Error("Failed to save goals");
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to save goals.");
+    }
   };
 
   const generatePlan = async () => {
     setLoading(true);
     setMealPlan(null);
+    setError("");
     try {
-      const res = await fetch(`${API}/api/goals/meal-plan`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(goal),
-      });
+      const res = await apiPost("/api/goals/meal-plan", goal);
       const data = await res.json();
-      setMealPlan(data.plan);
-    } catch {
-      alert("Could not generate meal plan. Check API connection.");
+      if (res.ok) {
+        setMealPlan(data.plan);
+      } else {
+        throw new Error(data.error || "Failed to generate meal plan.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Could not generate meal plan. Check API connection.");
     } finally {
       setLoading(false);
     }
@@ -95,10 +101,10 @@ export default function GoalForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem", marginBottom: "1.25rem" }}>
           {field("Daily Calories", "daily_calorie_goal", "number", "kcal")}
-          {field("Daily Budget", "daily_budget_usd", "number", "USD")}
-          {field("Protein", "daily_protein_goal_g", "number", "g/day")}
-          {field("Carbs", "daily_carbs_goal_g", "number", "g/day")}
-          {field("Fat", "daily_fats_goal_g", "number", "g/day")}
+          {field("Daily Food Budget", "daily_budget_usd", "number", "₹")}
+          {field("Protein Target", "daily_protein_goal_g", "number", "g/day")}
+          {field("Carbs Target", "daily_carbs_goal_g", "number", "g/day")}
+          {field("Fat Target", "daily_fats_goal_g", "number", "g/day")}
           {field("Target Duration", "target_weeks", "number", "weeks")}
         </div>
 
@@ -114,6 +120,8 @@ export default function GoalForm() {
           style={{ marginTop: "1.25rem", opacity: loading ? 0.6 : 1, backgroundColor: "var(--accent-3)", color: "var(--base-300)" }}>
           {loading ? "Generating Plan..." : "▶ Generate AI Meal Plan"}
         </button>
+
+        {error && <p className="mono" style={{ color: "var(--accent-2)", marginTop: "1rem" }}>{error}</p>}
       </div>
 
       {/* Meal plan output */}
@@ -154,7 +162,7 @@ export default function GoalForm() {
                           <span>💪 {meal.protein_g}g protein</span>
                           <span>🌾 {meal.carbs_g}g carbs</span>
                           <span>🫙 {meal.fats_g}g fat</span>
-                          <span>💰 ~${meal.estimated_cost}</span>
+                          <span>💰 ~₹{meal.estimated_cost}</span>
                         </div>
                       </div>
                     </div>
@@ -169,11 +177,11 @@ export default function GoalForm() {
                   { l: "Protein", v: mealPlan.weekly_plan[activeDay].day_total.protein_g, u: "g", c: "var(--accent-1)" },
                   { l: "Carbs", v: mealPlan.weekly_plan[activeDay].day_total.carbs_g, u: "g", c: "var(--accent-4)" },
                   { l: "Fat", v: mealPlan.weekly_plan[activeDay].day_total.fats_g, u: "g", c: "var(--accent-2)" },
-                  { l: "Spend", v: mealPlan.weekly_plan[activeDay].day_total.cost, u: "$", c: "var(--base-100)" },
+                  { l: "Spend", v: mealPlan.weekly_plan[activeDay].day_total.cost, u: "₹", c: "var(--base-100)" },
                 ].map(s => (
                   <div key={s.l}>
                     <p className="mono" style={{ color: "var(--base-secondary-dark)", fontSize: "0.65rem" }}>{s.l}</p>
-                    <div style={{ fontFamily: "Barlow Condensed", fontSize: "2rem", fontWeight: 900, color: s.c }}>{s.u === "$" ? "$" : ""}{s.v}{s.u !== "$" ? s.u : ""}</div>
+                    <div style={{ fontFamily: "Barlow Condensed", fontSize: "2rem", fontWeight: 900, color: s.c }}>{s.u === "₹" ? "₹" : ""}{s.v}{s.u !== "₹" ? s.u : ""}</div>
                   </div>
                 ))}
               </div>

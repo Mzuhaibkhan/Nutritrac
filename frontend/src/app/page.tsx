@@ -125,9 +125,14 @@ export default function Home() {
           </div>
         </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: "3rem", paddingTop: "2rem" }}>
-          <div className="container" style={{ display: "flex", justifyContent: "space-between" }}>
+          <div className="container" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
             <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>NutriTrack AI © 2026</p>
-            <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>AMD Ideathon — All Rights Reserved</p>
+            <div style={{ display: "flex", gap: "1.5rem" }}>
+              <Link href="/privacy" style={{ textDecoration: "underline" }} className="mono">
+                Privacy Policy
+              </Link>
+              <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>AMD Ideathon</p>
+            </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,6 @@
 "use client";
-import { useState, useTransition } from "react";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { useState } from "react";
+import { apiPost } from "@/lib/api";
 
 interface LogResult {
   food_item: string;
@@ -24,6 +23,7 @@ interface LogFormProps {
 }
 
 export default function LogForm({ onSuccess }: LogFormProps) {
+  const [mode, setMode] = useState<"ai" | "manual">("ai");
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<LogResult | null>(null);
@@ -33,29 +33,60 @@ export default function LogForm({ onSuccess }: LogFormProps) {
   const MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"];
   const [mealType, setMealType] = useState("lunch");
 
+  // Manual Form Fields
+  const [manualFood, setManualFood] = useState("");
+  const [manualCal, setManualCal] = useState("");
+  const [manualProt, setManualProt] = useState("");
+  const [manualCarb, setManualCarb] = useState("");
+  const [manualFat, setManualFat] = useState("");
+  const [manualFiber, setManualFiber] = useState("");
+  const [manualCost, setManualCost] = useState("");
+  const [manualCategory, setManualCategory] = useState("Other");
+
+  const CATEGORIES = [
+    "Healthy", "Protein", "Fruit", "Vegetable", "Dairy",
+    "Grain", "Snack", "Beverage", "Fast Food", "Other"
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
     setLoading(true);
     setError("");
     setResult(null);
     setFlipped(false);
 
     try {
-      const res = await fetch(`${API}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, meal_type: mealType }),
-      });
-      
-      const data: LogResult = await res.json();
-      if (!res.ok) throw new Error(data.error || "Analysis failed");
+      let data: LogResult;
 
-      // Get ML score
-      const mlRes = await fetch(`${API}/api/predict`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ calories: data.calories, cost: data.cost, category: data.category }),
+      if (mode === "ai") {
+        if (!text.trim()) return;
+        const res = await apiPost("/api/analyze", { text, meal_type: mealType });
+        data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Analysis failed");
+      } else {
+        if (!manualFood.trim()) throw new Error("Food name is required");
+        if (!manualCal) throw new Error("Calories are required");
+
+        const res = await apiPost("/api/food/manual", {
+          food_item: manualFood,
+          calories: parseInt(manualCal) || 0,
+          protein_g: parseFloat(manualProt) || 0,
+          carbs_g: parseFloat(manualCarb) || 0,
+          fats_g: parseFloat(manualFat) || 0,
+          fiber_g: parseFloat(manualFiber) || 0,
+          cost: parseFloat(manualCost) || 0,
+          category: manualCategory,
+          meal_type: mealType
+        });
+        data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Saving failed");
+      }
+
+      // Fetch ML prediction score
+      const mlRes = await apiPost("/api/predict", {
+        calories: data.calories,
+        cost: data.cost,
+        category: data.category
       });
       if (mlRes.ok) {
         const mlData = await mlRes.json();
@@ -67,8 +98,19 @@ export default function LogForm({ onSuccess }: LogFormProps) {
       setResult(data);
       setTimeout(() => setFlipped(true), 300);
       onSuccess?.(data);
+
+      // Clear fields if manual
+      if (mode === "manual") {
+        setManualFood("");
+        setManualCal("");
+        setManualProt("");
+        setManualCarb("");
+        setManualFat("");
+        setManualFiber("");
+        setManualCost("");
+      }
     } catch (err: any) {
-      setError(err.message || "Could not analyze meal. Check your API connection.");
+      setError(err.message || "Failed to log meal. Please check details.");
     } finally {
       setLoading(false);
     }
@@ -83,8 +125,20 @@ export default function LogForm({ onSuccess }: LogFormProps) {
 
   return (
     <div>
+      {/* Mode switcher */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem" }}>
+        <button type="button" onClick={() => { setMode("ai"); setError(""); setResult(null); }}
+          style={{ padding: "0.4rem 1rem", borderRadius: 6, fontFamily: "DM Mono, monospace", fontSize: "0.75rem", textTransform: "uppercase", cursor: "pointer", border: "none", backgroundColor: mode === "ai" ? "var(--base-300)" : "var(--base-200)", color: mode === "ai" ? "var(--base-100)" : "var(--base-secondary-dark)", transition: "all 0.25s ease" }}>
+          ▶ AI Analysis
+        </button>
+        <button type="button" onClick={() => { setMode("manual"); setError(""); setResult(null); }}
+          style={{ padding: "0.4rem 1rem", borderRadius: 6, fontFamily: "DM Mono, monospace", fontSize: "0.75rem", textTransform: "uppercase", cursor: "pointer", border: "none", backgroundColor: mode === "manual" ? "var(--base-300)" : "var(--base-200)", color: mode === "manual" ? "var(--base-100)" : "var(--base-secondary-dark)", transition: "all 0.25s ease" }}>
+          ▶ Manual Entry
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        {/* Meal type toggle */}
+        {/* Meal type selector */}
         <div style={{ display: "flex", gap: "0.4rem" }}>
           {MEAL_TYPES.map(m => (
             <button key={m} type="button" onClick={() => setMealType(m)}
@@ -94,28 +148,62 @@ export default function LogForm({ onSuccess }: LogFormProps) {
           ))}
         </div>
 
-        {/* Text input */}
-        <div style={{ position: "relative" }}>
-          <textarea className="input-field" value={text} onChange={e => setText(e.target.value)}
-            placeholder="e.g. grilled chicken salad with olive oil, cost ₹250..."
-            rows={3} style={{ resize: "none", lineHeight: 1.6 }} />
-        </div>
+        {mode === "ai" ? (
+          /* AI Mode Description input */
+          <div style={{ position: "relative" }}>
+            <textarea className="input-field" value={text} onChange={e => setText(e.target.value)}
+              placeholder="e.g. grilled chicken salad with olive oil, cost ₹250..."
+              rows={3} style={{ resize: "none", lineHeight: 1.6 }} />
+          </div>
+        ) : (
+          /* Manual Mode Fields Grid */
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            <div style={{ gridColumn: "span 2" }}>
+              <input type="text" className="input-field" placeholder="Food item name (e.g. Eggs & Toast)" value={manualFood} onChange={e => setManualFood(e.target.value)} required />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Calories (kcal) *" value={manualCal} onChange={e => setManualCal(e.target.value)} required min={0} />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Cost (₹)" value={manualCost} onChange={e => setManualCost(e.target.value)} min={0} />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Protein (g)" value={manualProt} onChange={e => setManualProt(e.target.value)} min={0} />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Carbs (g)" value={manualCarb} onChange={e => setManualCarb(e.target.value)} min={0} />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Fat (g)" value={manualFat} onChange={e => setManualFat(e.target.value)} min={0} />
+            </div>
+            <div>
+              <input type="number" className="input-field" placeholder="Fiber (g)" value={manualFiber} onChange={e => setManualFiber(e.target.value)} min={0} />
+            </div>
+            <div style={{ gridColumn: "span 2" }}>
+              <select className="input-field" value={manualCategory} onChange={e => setManualCategory(e.target.value)} style={{ paddingRight: "1rem" }}>
+                {CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
-        <button type="submit" disabled={loading || !text.trim()} className="btn-primary"
-          style={{ alignSelf: "flex-start", opacity: loading || !text.trim() ? 0.5 : 1 }}>
-          {loading ? "Analyzing..." : "▶ Analyze Meal"}
+        <button type="submit" disabled={loading || (mode === "ai" && !text.trim())} className="btn-primary"
+          style={{ alignSelf: "flex-start", opacity: loading || (mode === "ai" && !text.trim()) ? 0.5 : 1 }}>
+          {loading ? "Logging..." : mode === "ai" ? "▶ Analyze Meal" : "▶ Save Meal"}
         </button>
 
         {error && <p className="mono" style={{ color: "var(--accent-2)" }}>{error}</p>}
       </form>
 
-      {/* Result flip card */}
+      {/* Result Card */}
       {result && (
         <div style={{ marginTop: "2rem", perspective: 1200 }}>
           <div style={{ position: "relative", width: "100%", minHeight: 280, transformStyle: "preserve-3d", transition: "transform 0.8s cubic-bezier(0.25,0.46,0.45,0.94)", transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)" }}>
-            {/* Front - loading state */}
+            {/* Front - loading */}
             <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", backgroundColor: "var(--accent-3)", borderRadius: 12, padding: "1.5rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <p className="mono">Processing with Gemini AI...</p>
+              <p className="mono">Processing meal details...</p>
             </div>
             {/* Back - result */}
             <div style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", backgroundColor: "var(--base-300)", borderRadius: 12, padding: "1.75rem", color: "var(--base-100)" }}>

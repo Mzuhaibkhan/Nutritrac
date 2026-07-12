@@ -3,15 +3,18 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import gsap from "gsap";
+import { useAuth } from "@/components/AuthProvider";
 
 const navLinks = [
   { href: "/", label: "Index" },
   { href: "/dashboard", label: "Dashboard" },
   { href: "/log", label: "Log Meal" },
+  { href: "/activities", label: "Activities" },
   { href: "/history", label: "History" },
   { href: "/insights", label: "Insights" },
   { href: "/compare", label: "Compare" },
   { href: "/goals", label: "Goals" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function Nav() {
@@ -23,6 +26,7 @@ export default function Nav() {
   const footerRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   // Live clock (IST)
   useEffect(() => {
@@ -87,10 +91,43 @@ export default function Nav() {
           <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "var(--accent-3)" }} />
           <span style={{ fontFamily: "DM Mono, monospace", fontSize: "0.75rem", color: "var(--base-100)", textTransform: "uppercase", letterSpacing: "0.1em" }}>NutriTrack AI</span>
         </Link>
-        <button onClick={() => setOpen(o => !o)} aria-label="Toggle menu" style={{ display: "flex", flexDirection: "column", gap: 5, padding: "0.5rem", cursor: "pointer", background: "none", border: "none" }}>
-          <span style={{ display: "block", width: 20, height: 2, backgroundColor: "var(--base-100)", borderRadius: 1, transition: "all 0.25s ease", transform: open ? "rotate(45deg) translate(5px,5px)" : "none" }} />
-          <span style={{ display: "block", width: 20, height: 2, backgroundColor: "var(--base-100)", borderRadius: 1, transition: "all 0.25s ease", transform: open ? "rotate(-45deg) translate(5px,-5px)" : "none" }} />
-        </button>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {/* User avatar / login button */}
+          {user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              {user.user_metadata?.avatar_url ? (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt=""
+                  style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <div style={{ width: 24, height: 24, borderRadius: "50%", backgroundColor: "var(--accent-1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.65rem", fontWeight: 700, color: "var(--base-300)" }}>
+                  {(user.email?.[0] || "U").toUpperCase()}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              style={{
+                fontFamily: "DM Mono, monospace",
+                fontSize: "0.7rem",
+                color: "var(--accent-3)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Login
+            </Link>
+          )}
+
+          <button onClick={() => setOpen(o => !o)} aria-label="Toggle menu" style={{ display: "flex", flexDirection: "column", gap: 5, padding: "0.5rem", cursor: "pointer", background: "none", border: "none" }}>
+            <span style={{ display: "block", width: 20, height: 2, backgroundColor: "var(--base-100)", borderRadius: 1, transition: "all 0.25s ease", transform: open ? "rotate(45deg) translate(5px,5px)" : "none" }} />
+            <span style={{ display: "block", width: 20, height: 2, backgroundColor: "var(--base-100)", borderRadius: 1, transition: "all 0.25s ease", transform: open ? "rotate(-45deg) translate(5px,-5px)" : "none" }} />
+          </button>
+        </div>
       </div>
 
       {/* Dropdown overlay */}
@@ -107,12 +144,42 @@ export default function Nav() {
           ))}
         </ul>
         <div ref={footerRef} style={{ padding: "0.75rem 1.75rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            {["GitHub", "LinkedIn"].map(s => (
-              <a key={s} href="#" style={{ fontFamily: "DM Mono, monospace", fontSize: "0.78rem", color: "var(--base-secondary-dark)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                &#9654; {s}
-              </a>
-            ))}
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            {user ? (
+              <>
+                <span style={{ fontFamily: "DM Mono, monospace", fontSize: "0.78rem", color: "var(--base-secondary-dark)", textTransform: "uppercase" }}>
+                  {user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
+                </span>
+                <button
+                  onClick={signOut}
+                  style={{
+                    fontFamily: "DM Mono, monospace",
+                    fontSize: "0.78rem",
+                    color: "var(--accent-2)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    cursor: "pointer",
+                    background: "none",
+                    border: "none",
+                  }}
+                >
+                  &#9654; Sign Out
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                style={{
+                  fontFamily: "DM Mono, monospace",
+                  fontSize: "0.78rem",
+                  color: "var(--accent-3)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                &#9654; Sign In
+              </Link>
+            )}
           </div>
           <span style={{ fontFamily: "DM Mono, monospace", fontSize: "0.78rem", color: "var(--base-secondary-dark)" }}>{time} IST</span>
         </div>

@@ -3,32 +3,39 @@ import { useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
 import TimeRangeSelector from "@/components/TimeRangeSelector";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
+import CalorieChart from "@/components/charts/CalorieChart";
+import MacroChart from "@/components/charts/MacroChart";
+import SpendChart from "@/components/charts/SpendChart";
+import ActivityChart from "@/components/charts/ActivityChart";
 
 export default function InsightsPage() {
+  const { user } = useAuth();
   const [range, setRange] = useState("week");
-  const [charts, setCharts] = useState<{ calorie_chart: string; macro_chart: string; spend_chart: string; category_chart?: string }>({ calorie_chart: "", macro_chart: "", spend_chart: "" });
+  const [dailyNutrition, setDailyNutrition] = useState<any[]>([]);
+  const [dailyActivities, setDailyActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
+
     const fetch_ = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API}/api/analytics?range=${range}`);
-        if (res.ok) setCharts(await res.json());
-      } catch { /* no-op */ }
+        const res = await apiFetch(`/api/analytics?range=${range}`);
+        if (res.ok) {
+          const d = await res.json();
+          setDailyNutrition(d.daily_nutrition || []);
+          setDailyActivities(d.daily_activities || []);
+        }
+      } catch (err) {
+        console.error("Insights load error", err);
+      }
       setLoading(false);
     };
     fetch_();
-  }, [range]);
-
-  const CHART_DEFS = [
-    { key: "calorie_chart", title: "Calorie Intake", desc: "Daily calorie consumption over time" },
-    { key: "macro_chart", title: "Macro Breakdown", desc: "Protein / Carbs / Fat grouped bars" },
-    { key: "spend_chart", title: "Spending vs Budget", desc: "Food spending with daily budget reference" },
-    { key: "category_chart", title: "Category Breakdown", desc: "Spending by food category" },
-  ];
+  }, [range, user]);
 
   return (
     <LenisProvider>
@@ -53,29 +60,74 @@ export default function InsightsPage() {
                 <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Generating charts...</p>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "1.5rem" }}>
-                {CHART_DEFS.map(c => {
-                  const b64 = charts[c.key as keyof typeof charts];
-                  return (
-                    <div key={c.key}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                        <div>
-                          <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>{c.title}</p>
-                          <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem" }}>{c.desc}</p>
-                        </div>
-                      </div>
-                      <div className="chart-container" style={{ minHeight: 200 }}>
-                        {b64 ? (
-                          <img src={`data:image/png;base64,${b64}`} alt={c.title} style={{ borderRadius: 12 }} />
-                        ) : (
-                          <div style={{ height: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>No data for this range</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: "2.5rem" }}>
+                
+                {/* Calories chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Calorie Intake</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Daily calorie consumption over time
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <CalorieChart data={dailyNutrition} />
+                  </div>
+                </div>
+
+                {/* Steps chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Steps Tracker</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Daily steps count trends
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <ActivityChart data={dailyActivities} metric="steps" />
+                  </div>
+                </div>
+
+                {/* Macro chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Macronutrient Balance</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Protein, carbs, and fat distributions
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <MacroChart data={dailyNutrition} />
+                  </div>
+                </div>
+
+                {/* Spending chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Food Expenditures</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Food budget expenses (₹)
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <SpendChart data={dailyNutrition} />
+                  </div>
+                </div>
+
+                {/* Active Minutes chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Exercise Activity</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Daily active minutes spent exercising
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <ActivityChart data={dailyActivities} metric="active_minutes" />
+                  </div>
+                </div>
+
+                {/* Active Calories Burned chart */}
+                <div>
+                  <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>Active Energy Burned</p>
+                  <p style={{ fontSize: "0.82rem", color: "var(--base-secondary-dark)", marginTop: "0.15rem", marginBottom: "0.75rem" }}>
+                    Daily active calories burned (kcal)
+                  </p>
+                  <div className="chart-container" style={{ padding: "1rem" }}>
+                    <ActivityChart data={dailyActivities} metric="calories_burned" />
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
