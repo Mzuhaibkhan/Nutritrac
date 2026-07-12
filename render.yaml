@@ -35,7 +35,7 @@ services:
 
   # Frontend Next.js Static Site
   - type: web
-    name: nutritrack-web
+    name: nutritrack
     env: node
     buildCommand: cd frontend && npm install && npm run build
     startCommand: cd frontend && npm run start
@@ -43,7 +43,7 @@ services:
       - key: NEXT_PUBLIC_API_URL
         value: https://nutritrack-api.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
-        value: https://nutritrack-web.onrender.com
+        value: https://nutritrack.onrender.com
       - key: NEXT_PUBLIC_SUPABASE_URL
         sync: false # Set in Render Dashboard (same as backend)
       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
