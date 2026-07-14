@@ -5,6 +5,7 @@ import LenisProvider from "@/components/LenisProvider";
 import { apiFetch, apiPost, apiDelete } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -19,6 +20,8 @@ export default function SettingsPage() {
   const [stepGoal, setStepGoal] = useState("");
   const [minGoal, setMinGoal] = useState("");
   const [budgetGoal, setBudgetGoal] = useState("");
+  const [preferredCurrency, setPreferredCurrency] = useState("INR");
+  const [waterGoal, setWaterGoal] = useState("3000");
 
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
@@ -45,6 +48,8 @@ export default function SettingsPage() {
           setStepGoal(String(data.daily_step_goal || 10000));
           setMinGoal(String(data.daily_active_minutes_goal || 30));
           setBudgetGoal(String(data.daily_budget_usd || 500));
+          setPreferredCurrency(data.preferred_currency || "INR");
+          setWaterGoal(String(data.daily_water_goal_ml || 3000));
         }
       } catch (err) {
         console.error("Profile load failed", err);
@@ -82,7 +87,9 @@ export default function SettingsPage() {
         daily_fats_goal_g: parseInt(fatGoal) || 65,
         daily_step_goal: parseInt(stepGoal) || 10000,
         daily_active_minutes_goal: parseInt(minGoal) || 30,
-        daily_budget_usd: parseFloat(budgetGoal) || 500
+        daily_budget_usd: parseFloat(budgetGoal) || 500,
+        preferred_currency: preferredCurrency,
+        daily_water_goal_ml: parseInt(waterGoal) || 3000
       });
 
       if (res.ok) {
@@ -161,8 +168,19 @@ export default function SettingsPage() {
                     <input type="number" className="input-field" value={calGoal} onChange={e => setCalGoal(e.target.value)} required min={500} />
                   </div>
                   <div>
-                    <label className="mono" style={{ color: "var(--base-secondary-dark)", display: "block", marginBottom: "0.35rem" }}>Daily Food Budget (₹)</label>
+                    <label className="mono" style={{ color: "var(--base-secondary-dark)", display: "block", marginBottom: "0.35rem" }}>Daily Food Budget</label>
                     <input type="number" className="input-field" value={budgetGoal} onChange={e => setBudgetGoal(e.target.value)} required min={10} />
+                  </div>
+                  <div>
+                    <label className="mono" style={{ color: "var(--base-secondary-dark)", display: "block", marginBottom: "0.35rem" }}>Preferred Currency</label>
+                    <select className="input-field" value={preferredCurrency} onChange={e => setPreferredCurrency(e.target.value)} style={{ paddingRight: "1rem" }}>
+                      <option value="INR">INR (₹)</option>
+                      <option value="USD">USD ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mono" style={{ color: "var(--base-secondary-dark)", display: "block", marginBottom: "0.35rem" }}>Daily Water Goal (ml)</label>
+                    <input type="number" className="input-field" value={waterGoal} onChange={e => setWaterGoal(e.target.value)} required min={500} />
                   </div>
                   <div>
                     <label className="mono" style={{ color: "var(--base-secondary-dark)", display: "block", marginBottom: "0.35rem" }}>Protein Target (g)</label>

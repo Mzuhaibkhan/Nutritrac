@@ -41,6 +41,68 @@ class GenerativeModelWrapper:
             except Exception as e:
                 print(f"Gemini failed: {e}. Trying other providers...")
 
+    def generate_content_with_image(self, prompt: str, image_bytes: bytes, mime_type: str) -> MockResponse:
+        gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        openai_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("GPT_API_KEY", "")
+
+        # 1. Try Gemini
+        if gemini_key:
+            try:
+                genai.configure(api_key=gemini_key)
+                gemini_model = genai.GenerativeModel(
+                    model_name="gemini-2.0-flash-lite",
+                    safety_settings=SAFETY_SETTINGS
+                )
+                return gemini_model.generate_content([
+                    prompt,
+                    {
+                        "mime_type": mime_type,
+                        "data": image_bytes
+                    }
+                ])
+            except Exception as e:
+                print(f"Gemini Vision failed: {e}. Trying other providers...")
+
+        # 2. Try OpenAI (GPT)
+        if openai_key:
+            try:
+                import base64
+                import requests
+                base64_image = base64.b64encode(image_bytes).decode("utf-8")
+                headers = {
+                    "Authorization": f"Bearer {openai_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{mime_type};base64,{base64_image}"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+                if "json" in prompt.lower():
+                    payload["response_format"] = { "type": "json_object" }
+
+                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp.raise_for_status()
+                res_json = resp.json()
+                text = res_json["choices"][0]["message"]["content"]
+                return MockResponse(text)
+            except Exception as e:
+                print(f"OpenAI Vision failed: {e}.")
+
+        return self._generate_fallback(prompt)
+
         # 2. Try OpenAI (GPT)
         if openai_key:
             try:
