@@ -58,7 +58,8 @@ export default function DashboardPage() {
     active_min_goal: 30
   });
 
-  const today = new Date().toISOString().split("T")[0];
+  const localDate = new Date();
+  const today = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
 
   useEffect(() => {
     if (!user) return;

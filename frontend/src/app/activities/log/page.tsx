@@ -9,7 +9,9 @@ export default function LogActivityPage() {
   const router = useRouter();
   const [type, setType] = useState("walking");
   const [title, setTitle] = useState("");
-  const [dateVal, setDateVal] = useState(new Date().toISOString().split("T")[0]);
+  const localDate = new Date();
+  const initialDateStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
+  const [dateVal, setDateVal] = useState(initialDateStr);
   const [duration, setDuration] = useState("");
   const [steps, setSteps] = useState("");
   const [distance, setDistance] = useState("");

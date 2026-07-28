@@ -41,6 +41,55 @@ class GenerativeModelWrapper:
             except Exception as e:
                 print(f"Gemini failed: {e}. Trying other providers...")
 
+        # 2. Try OpenAI (GPT)
+        if openai_key:
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {openai_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                if "json" in prompt.lower():
+                    payload["response_format"] = { "type": "json_object" }
+
+                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp.raise_for_status()
+                res_json = resp.json()
+                text = res_json["choices"][0]["message"]["content"]
+                return MockResponse(text)
+            except Exception as e:
+                print(f"OpenAI GPT failed: {e}. Trying other providers...")
+
+        # 3. Try xAI (Grok)
+        if grok_key:
+            try:
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {grok_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": "grok-2-1212",
+                    "messages": [{"role": "user", "content": prompt}]
+                }
+                if "json" in prompt.lower():
+                    payload["response_format"] = { "type": "json_object" }
+
+                resp = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp.raise_for_status()
+                res_json = resp.json()
+                text = res_json["choices"][0]["message"]["content"]
+                return MockResponse(text)
+            except Exception as e:
+                print(f"xAI Grok failed: {e}.")
+
+        # 4. Fallback (Offline Heuristics)
+        return self._generate_fallback(prompt)
+
     def generate_content_with_image(self, prompt: str, image_bytes: bytes, mime_type: str) -> MockResponse:
         gemini_key = os.environ.get("GEMINI_API_KEY", "")
         openai_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("GPT_API_KEY", "")
@@ -101,55 +150,6 @@ class GenerativeModelWrapper:
             except Exception as e:
                 print(f"OpenAI Vision failed: {e}.")
 
-        return self._generate_fallback(prompt)
-
-        # 2. Try OpenAI (GPT)
-        if openai_key:
-            try:
-                import requests
-                headers = {
-                    "Authorization": f"Bearer {openai_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": prompt}]
-                }
-                if "json" in prompt.lower():
-                    payload["response_format"] = { "type": "json_object" }
-
-                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
-                resp.raise_for_status()
-                res_json = resp.json()
-                text = res_json["choices"][0]["message"]["content"]
-                return MockResponse(text)
-            except Exception as e:
-                print(f"OpenAI GPT failed: {e}. Trying other providers...")
-
-        # 3. Try xAI (Grok)
-        if grok_key:
-            try:
-                import requests
-                headers = {
-                    "Authorization": f"Bearer {grok_key}",
-                    "Content-Type": "application/json"
-                }
-                payload = {
-                    "model": "grok-2-1212",
-                    "messages": [{"role": "user", "content": prompt}]
-                }
-                if "json" in prompt.lower():
-                    payload["response_format"] = { "type": "json_object" }
-
-                resp = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers, timeout=30)
-                resp.raise_for_status()
-                res_json = resp.json()
-                text = res_json["choices"][0]["message"]["content"]
-                return MockResponse(text)
-            except Exception as e:
-                print(f"xAI Grok failed: {e}.")
-
-        # 4. Fallback (Offline Heuristics)
         return self._generate_fallback(prompt)
 
     def _generate_fallback(self, prompt: str) -> MockResponse:

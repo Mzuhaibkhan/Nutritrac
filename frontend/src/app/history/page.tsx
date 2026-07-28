@@ -14,7 +14,9 @@ export default function HistoryPage() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
-  const [selectedDate, setSelectedDate] = useState(today.toISOString().split("T")[0]);
+  const localDate = new Date();
+  const initialDateStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, "0")}-${String(localDate.getDate()).padStart(2, "0")}`;
+  const [selectedDate, setSelectedDate] = useState(initialDateStr);
   const [dayData, setDayData] = useState<Record<string, { calories: number; on_target: boolean }>>({});
   const [logs, setLogs] = useState<FoodLog[]>([]);
 
