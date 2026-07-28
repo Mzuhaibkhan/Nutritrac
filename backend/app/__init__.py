@@ -13,7 +13,7 @@ def create_app():
     ).split(",")
     
     # Enable CORS for frontend clients
-    CORS(app, origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:8080", "http://127.0.0.1:3000", "http://127.0.0.1:3001"])
+    CORS(app, origins=allowed_origins)
 
     from .routes.food import food_bp
     from .routes.llm import llm_bp

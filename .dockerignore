@@ -1,0 +1,39 @@
+# Dependencies (installed inside container)
+node_modules
+frontend/node_modules
+frontend/.next
+
+# Version control
+.git
+.gitignore
+
+# Environment files (secrets — use Render env vars instead)
+.env
+.env.local
+.env.*.local
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE / Editor
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python cache
+__pycache__
+*.py[cod]
+*.egg-info
+.venv
+venv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.log

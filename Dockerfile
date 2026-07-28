@@ -5,16 +5,20 @@ COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ .
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_API_URL=/
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ARG NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 RUN npm run build
 
 # ── Stage 2: Production (Python + Node + nginx) ───────────────
 FROM python:3.11-slim AS production
 WORKDIR /app
 
-# Install Node.js 20 + nginx
-RUN apt-get update && apt-get install -y curl gnupg nginx \
+# Install Node.js 20 + nginx + gettext-base (for envsubst)
+RUN apt-get update && apt-get install -y curl gnupg nginx gettext-base \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -31,14 +35,14 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 # Copy backend + ML model
 COPY backend/ ./backend/
 
-# nginx config
-COPY nginx.conf /etc/nginx/nginx.conf
+# nginx config (as template — start.sh will envsubst $PORT at runtime)
+COPY nginx.conf /etc/nginx/nginx.conf.template
 
 # Start script
 COPY start.sh .
 RUN chmod +x start.sh
 
-# Cloud Run listens on PORT (default 8080)
+# Render sets PORT dynamically; default to 8080 for local Docker use
 ENV PORT=8080
 EXPOSE 8080
 

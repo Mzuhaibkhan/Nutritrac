@@ -3,6 +3,14 @@ set -e
 
 echo "▶ Starting NutriTrack AI..."
 
+# Default PORT if not set by Render
+export PORT="${PORT:-8080}"
+
+# Resolve nginx config template — substitute only $PORT
+# (other $variables like $host, $http_upgrade are nginx-native and must NOT be replaced)
+envsubst '$PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+echo "  nginx will listen on :$PORT"
+
 # Start Flask backend (background)
 cd /app/backend
 gunicorn --bind 127.0.0.1:5000 --workers 2 --timeout 120 run:app &
@@ -17,5 +25,5 @@ echo "  Next.js started on :3000"
 sleep 3
 
 # Start nginx (foreground — keeps container alive)
-echo "  nginx starting on :8080"
+echo "  nginx starting on :$PORT"
 nginx -g 'daemon off;'
