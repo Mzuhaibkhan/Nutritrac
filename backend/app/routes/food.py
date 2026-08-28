@@ -14,25 +14,19 @@ def get_logs():
     from_date = request.args.get("from")
     to_date = request.args.get("to")
 
-    try:
-        query = {"user_id": g.user_id}
-        if date_filter:
-            query["log_date"] = date_filter
-        elif from_date and to_date:
-            query["log_date"] = {"$gte": from_date, "$lte": to_date}
+    query = {"user_id": g.user_id}
+    if date_filter:
+        query["log_date"] = date_filter
+    elif from_date and to_date:
+        query["log_date"] = {"$gte": from_date, "$lte": to_date}
 
-        docs = db.food_logs.find(query).sort("logged_at", -1)
-        return jsonify(serialize_docs(docs))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    docs = db.food_logs.find(query).sort("logged_at", -1)
+    return jsonify(serialize_docs(docs))
 
 
 @food_bp.route("/logs/<log_id>", methods=["DELETE"])
 @require_auth
 def delete_log(log_id):
-    try:
-        db = get_db()
-        db.food_logs.delete_one({"id": log_id, "user_id": g.user_id})
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    db = get_db()
+    db.food_logs.delete_one({"id": log_id, "user_id": g.user_id})
+    return jsonify({"success": True})

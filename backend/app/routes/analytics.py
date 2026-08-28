@@ -18,13 +18,10 @@ def analytics():
     from_date = str(date.today() - timedelta(days=days))
     db = get_db()
 
-    try:
-        rows = list(db.food_logs.find({
-            "user_id": g.user_id,
-            "log_date": {"$gte": from_date}
-        }).sort("log_date", 1))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    rows = list(db.food_logs.find({
+        "user_id": g.user_id,
+        "log_date": {"$gte": from_date}
+    }).sort("log_date", 1))
 
     # Aggregate by date for chart-ready data
     daily = {}
@@ -45,21 +42,18 @@ def analytics():
 
     # Activity data
     activity_daily = {}
-    try:
-        activity_rows = list(db.activities.find({
-            "user_id": g.user_id,
-            "activity_date": {"$gte": from_date}
-        }).sort("activity_date", 1))
+    activity_rows = list(db.activities.find({
+        "user_id": g.user_id,
+        "activity_date": {"$gte": from_date}
+    }).sort("activity_date", 1))
 
-        for r in activity_rows:
-            d = r["activity_date"]
-            if d not in activity_daily:
-                activity_daily[d] = {"date": d, "steps": 0, "calories_burned": 0, "active_minutes": 0}
-            activity_daily[d]["steps"] += r.get("steps", 0) or 0
-            activity_daily[d]["calories_burned"] += r.get("calories_burned", 0) or 0
-            activity_daily[d]["active_minutes"] += r.get("duration_minutes", 0) or 0
-    except Exception:
-        activity_rows = []
+    for r in activity_rows:
+        d = r["activity_date"]
+        if d not in activity_daily:
+            activity_daily[d] = {"date": d, "steps": 0, "calories_burned": 0, "active_minutes": 0}
+        activity_daily[d]["steps"] += r.get("steps", 0) or 0
+        activity_daily[d]["calories_burned"] += r.get("calories_burned", 0) or 0
+        activity_daily[d]["active_minutes"] += r.get("duration_minutes", 0) or 0
 
     return jsonify({
         "daily_nutrition": sorted(daily.values(), key=lambda x: x["date"]),
@@ -76,13 +70,10 @@ def daily_summary():
     to_date = request.args.get("to")
     db = get_db()
 
-    try:
-        rows = list(db.food_logs.find({
-            "user_id": g.user_id,
-            "log_date": {"$gte": from_date, "$lte": to_date}
-        }))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    rows = list(db.food_logs.find({
+        "user_id": g.user_id,
+        "log_date": {"$gte": from_date, "$lte": to_date}
+    }))
 
     calorie_goal = int(os.environ.get("DEFAULT_DAILY_CALORIE_GOAL", 2000))
 

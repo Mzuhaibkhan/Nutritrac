@@ -43,11 +43,8 @@ def create_activity():
         "created_at": now_iso()
     }
 
-    try:
-        db.activities.insert_one(entry)
-        return jsonify(serialize_doc(entry))
-    except Exception as e:
-        return jsonify({"error": f"Failed to save activity: {str(e)}"}), 500
+    db.activities.insert_one(entry)
+    return jsonify(serialize_doc(entry))
 
 
 @activities_bp.route("/activities", methods=["GET"])
@@ -60,31 +57,25 @@ def list_activities():
     activity_type = request.args.get("type")
     db = get_db()
 
-    try:
-        query = {"user_id": g.user_id}
-        if date_filter:
-            query["activity_date"] = date_filter
-        elif from_date and to_date:
-            query["activity_date"] = {"$gte": from_date, "$lte": to_date}
-        if activity_type:
-            query["activity_type"] = activity_type
-            
-        docs = db.activities.find(query).sort([("activity_date", -1), ("created_at", -1)]).limit(100)
-        return jsonify(serialize_docs(docs))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    query = {"user_id": g.user_id}
+    if date_filter:
+        query["activity_date"] = date_filter
+    elif from_date and to_date:
+        query["activity_date"] = {"$gte": from_date, "$lte": to_date}
+    if activity_type:
+        query["activity_type"] = activity_type
+        
+    docs = db.activities.find(query).sort([("activity_date", -1), ("created_at", -1)]).limit(100)
+    return jsonify(serialize_docs(docs))
 
 
 @activities_bp.route("/activities/<activity_id>", methods=["DELETE"])
 @require_auth
 def delete_activity(activity_id):
     """Delete an activity owned by the current user."""
-    try:
-        db = get_db()
-        db.activities.delete_one({"id": activity_id, "user_id": g.user_id})
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    db = get_db()
+    db.activities.delete_one({"id": activity_id, "user_id": g.user_id})
+    return jsonify({"success": True})
 
 
 @activities_bp.route("/activities/summary", methods=["GET"])
@@ -97,13 +88,10 @@ def activity_summary():
     from_date = str(date.today() - timedelta(days=days))
     db = get_db()
 
-    try:
-        rows = list(db.activities.find({
-            "user_id": g.user_id,
-            "activity_date": {"$gte": from_date}
-        }).sort("activity_date", 1))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    rows = list(db.activities.find({
+        "user_id": g.user_id,
+        "activity_date": {"$gte": from_date}
+    }).sort("activity_date", 1))
 
     # Daily aggregation
     daily = {}

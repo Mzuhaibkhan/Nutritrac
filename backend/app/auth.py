@@ -29,7 +29,10 @@ def require_auth(f):
             g.user_id = user_response.user.id
             g.user_token = token
         except Exception as e:
-            return jsonify({"error": f"Authentication failed: {str(e)}"}), 401
+            from werkzeug.exceptions import Unauthorized
+            import logging
+            logging.error(f"Authentication failed: {str(e)}")
+            raise Unauthorized("Authentication failed")
 
         return f(*args, **kwargs)
     return decorated

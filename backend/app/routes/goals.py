@@ -115,11 +115,8 @@ def generate_meal_plan():
         goal["id"] = new_id()
         goal["user_id"] = g.user_id
         goal["created_at"] = now_iso()
-        try:
-            db.user_goals.insert_one(goal)
-            goal_id = goal["id"]
-        except Exception:
-            goal_id = None
+        db.user_goals.insert_one(goal)
+        goal_id = goal["id"]
         return jsonify({"plan": cached_plan, "goal_id": goal_id, "cached": True})
 
     # Rate limit
@@ -143,35 +140,32 @@ def generate_meal_plan():
         target_weeks=goal.get("target_weeks", 4),
     )
 
-    try:
-        response = model.generate_content(prompt)
-        raw = response.text.strip()
-        raw = re.sub(r"^```(?:json)?", "", raw, flags=re.MULTILINE).strip()
-        raw = re.sub(r"```$", "", raw, flags=re.MULTILINE).strip()
-        plan = json.loads(raw)
+    response = model.generate_content(prompt)
+    raw = response.text.strip()
+    raw = re.sub(r"^```(?:json)?", "", raw, flags=re.MULTILINE).strip()
+    raw = re.sub(r"```$", "", raw, flags=re.MULTILINE).strip()
+    plan = json.loads(raw)
 
-        # Cache the plan
-        _meal_plan_cache[goal_h] = plan
+    # Cache the plan
+    _meal_plan_cache[goal_h] = plan
 
-        # Save goal + plan
-        goal["id"] = new_id()
-        goal["user_id"] = g.user_id
-        goal["created_at"] = now_iso()
-        db.user_goals.insert_one(goal)
-        
-        meal_plan_entry = {
-            "id": new_id(),
-            "user_id": g.user_id,
-            "goal_id": goal["id"],
-            "week_label": f"Week of {date.today()}",
-            "plan_json": plan,
-            "generated_at": now_iso()
-        }
-        db.meal_plans.insert_one(meal_plan_entry)
+    # Save goal + plan
+    goal["id"] = new_id()
+    goal["user_id"] = g.user_id
+    goal["created_at"] = now_iso()
+    db.user_goals.insert_one(goal)
+    
+    meal_plan_entry = {
+        "id": new_id(),
+        "user_id": g.user_id,
+        "goal_id": goal["id"],
+        "week_label": f"Week of {date.today()}",
+        "plan_json": plan,
+        "generated_at": now_iso()
+    }
+    db.meal_plans.insert_one(meal_plan_entry)
 
-        return jsonify({"plan": plan, "goal_id": goal["id"]})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"plan": plan, "goal_id": goal["id"]})
 
 
 @goals_bp.route("/goals/meal-plans", methods=["GET"])

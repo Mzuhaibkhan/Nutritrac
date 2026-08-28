@@ -25,13 +25,10 @@ def _sum_period(user_id: str, from_d: str, to_d: str) -> dict:
 
 def _sum_activities(user_id: str, from_d: str, to_d: str) -> dict:
     db = get_db()
-    try:
-        rows = list(db.activities.find({
-            "user_id": user_id,
-            "activity_date": {"$gte": from_d, "$lte": to_d}
-        }))
-    except Exception:
-        return {}
+    rows = list(db.activities.find({
+        "user_id": user_id,
+        "activity_date": {"$gte": from_d, "$lte": to_d}
+    }))
     totals = defaultdict(float)
     for r in rows:
         totals["steps"] += r.get("steps", 0) or 0

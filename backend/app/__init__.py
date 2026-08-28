@@ -1,5 +1,8 @@
 import os
-from flask import Flask
+from flask import Flask, jsonify, request
+from werkzeug.exceptions import HTTPException
+import traceback
+import logging
 from flask_cors import CORS
 
 
@@ -48,5 +51,30 @@ def create_app():
     @app.route("/api/health")
     def health():
         return {"status": "ok", "service": "NutriTrack AI Backend"}
+
+    # Centralized Error Handlers
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(e):
+        """Return JSON instead of HTML for HTTP errors."""
+        response = e.get_response()
+        response.data = jsonify({
+            "error": e.description,
+            "code": e.code
+        }).data
+        response.content_type = "application/json"
+        return response
+
+    @app.errorhandler(Exception)
+    def handle_exception(e):
+        """Return JSON instead of HTML for unhandled exceptions."""
+        # Log the exception stack trace to server logs
+        app.logger.error(f"Unhandled Exception: {str(e)}")
+        app.logger.error(traceback.format_exc())
+        
+        # Return a generic error message to the client
+        return jsonify({
+            "error": "An internal server error occurred.",
+            "code": 500
+        }), 500
 
     return app

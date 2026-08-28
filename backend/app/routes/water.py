@@ -31,11 +31,8 @@ def log_water():
         "logged_at": now_iso()
     }
 
-    try:
-        db.water_logs.insert_one(entry)
-        return jsonify(serialize_doc(entry))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    db.water_logs.insert_one(entry)
+    return jsonify(serialize_doc(entry))
 
 
 @water_bp.route("/water", methods=["GET"])
@@ -45,23 +42,20 @@ def get_water():
     date_filter = request.args.get("date") or str(date.today())
     db = get_db()
 
-    try:
-        # Sum today's logs
-        logs = list(db.water_logs.find({
-            "user_id": g.user_id,
-            "log_date": date_filter
-        }))
-        total_ml = sum(l.get("amount_ml", 0) for l in logs)
+    # Sum today's logs
+    logs = list(db.water_logs.find({
+        "user_id": g.user_id,
+        "log_date": date_filter
+    }))
+    total_ml = sum(l.get("amount_ml", 0) for l in logs)
 
-        # Get target goal from profile settings, default to 3000ml
-        profile = db.user_profiles.find_one({"user_id": g.user_id}) or {}
-        goal_ml = profile.get("daily_water_goal_ml", 3000)
+    # Get target goal from profile settings, default to 3000ml
+    profile = db.user_profiles.find_one({"user_id": g.user_id}) or {}
+    goal_ml = profile.get("daily_water_goal_ml", 3000)
 
-        return jsonify({
-            "date": date_filter,
-            "total_ml": total_ml,
-            "goal_ml": goal_ml,
-            "logs": serialize_docs(logs)
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({
+        "date": date_filter,
+        "total_ml": total_ml,
+        "goal_ml": goal_ml,
+        "logs": serialize_docs(logs)
+    })

@@ -45,9 +45,6 @@ def manual_log():
         "logged_at": now_iso(),
     }
 
-    try:
-        db = get_db()
-        db.food_logs.insert_one(entry)
-        return jsonify(serialize_doc(entry))
-    except Exception as e:
-        return jsonify({"error": f"Failed to save: {str(e)}"}), 500
+    db = get_db()
+    db.food_logs.insert_one(entry)
+    return jsonify(serialize_doc(entry))

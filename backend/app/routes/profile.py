@@ -11,29 +11,26 @@ profile_bp = Blueprint("profile", __name__)
 def get_profile():
     """Retrieve user health targets and settings."""
     db = get_db()
-    try:
-        profile = db.user_profiles.find_one({"user_id": g.user_id})
-        if not profile:
-            # Create default profile
-            profile = {
-                "user_id": g.user_id,
-                "display_name": g.user_id[:8],
-                "daily_calorie_goal": 2000,
-                "daily_protein_goal_g": 150,
-                "daily_carbs_goal_g": 250,
-                "daily_fats_goal_g": 65,
-                "daily_budget_usd": 500,  # Actually stores amount in user's currency preference
-                "preferred_currency": "INR",  # Defaults to INR
-                "daily_step_goal": 10000,
-                "daily_active_minutes_goal": 30,
-                "daily_water_goal_ml": 3000,
-                "created_at": now_iso(),
-                "updated_at": now_iso()
-            }
-            db.user_profiles.insert_one(profile)
-        return jsonify(serialize_doc(profile))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    profile = db.user_profiles.find_one({"user_id": g.user_id})
+    if not profile:
+        # Create default profile
+        profile = {
+            "user_id": g.user_id,
+            "display_name": g.user_id[:8],
+            "daily_calorie_goal": 2000,
+            "daily_protein_goal_g": 150,
+            "daily_carbs_goal_g": 250,
+            "daily_fats_goal_g": 65,
+            "daily_budget_usd": 500,  # Actually stores amount in user's currency preference
+            "preferred_currency": "INR",  # Defaults to INR
+            "daily_step_goal": 10000,
+            "daily_active_minutes_goal": 30,
+            "daily_water_goal_ml": 3000,
+            "created_at": now_iso(),
+            "updated_at": now_iso()
+        }
+        db.user_profiles.insert_one(profile)
+    return jsonify(serialize_doc(profile))
 
 
 @profile_bp.route("/profile", methods=["POST"])
@@ -61,12 +58,9 @@ def save_profile():
         "updated_at": now_iso()
     }
 
-    try:
-        db.user_profiles.update_one(
-            {"user_id": g.user_id},
-            {"$set": update_fields},
-            upsert=True
-        )
-        return jsonify({"success": True, "profile": update_fields})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    db.user_profiles.update_one(
+        {"user_id": g.user_id},
+        {"$set": update_fields},
+        upsert=True
+    )
+    return jsonify({"success": True, "profile": update_fields})

@@ -25,11 +25,8 @@ def create_post():
         "created_at": now_iso()
     }
 
-    try:
-        db.posts.insert_one(post)
-        return jsonify(serialize_doc(post))
-    except Exception as e:
-        return jsonify({"error": f"Failed to share: {str(e)}"}), 500
+    db.posts.insert_one(post)
+    return jsonify(serialize_doc(post))
 
 
 @social_bp.route("/social/feed", methods=["GET"])
@@ -37,11 +34,8 @@ def create_post():
 def get_feed():
     """Get the global community feed (sorted by newest first)."""
     db = get_db()
-    try:
-        posts = db.posts.find().sort("created_at", -1).limit(50)
-        return jsonify(serialize_docs(posts))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    posts = db.posts.find().sort("created_at", -1).limit(50)
+    return jsonify(serialize_docs(posts))
 
 
 @social_bp.route("/social/posts/<post_id>/like", methods=["POST"])
@@ -49,21 +43,18 @@ def get_feed():
 def toggle_like(post_id):
     """Toggle liking a shared post."""
     db = get_db()
-    try:
-        post = db.posts.find_one({"id": post_id})
-        if not post:
-            return jsonify({"error": "Post not found"}), 404
+    post = db.posts.find_one({"id": post_id})
+    if not post:
+        return jsonify({"error": "Post not found"}), 404
 
-        likes = post.get("likes", [])
-        if g.user_id in likes:
-            # Unlike
-            db.posts.update_one({"id": post_id}, {"$pull": {"likes": g.user_id}})
-            liked = False
-        else:
-            # Like
-            db.posts.update_one({"id": post_id}, {"$addToSet": {"likes": g.user_id}})
-            liked = True
+    likes = post.get("likes", [])
+    if g.user_id in likes:
+        # Unlike
+        db.posts.update_one({"id": post_id}, {"$pull": {"likes": g.user_id}})
+        liked = False
+    else:
+        # Like
+        db.posts.update_one({"id": post_id}, {"$addToSet": {"likes": g.user_id}})
+        liked = True
 
-        return jsonify({"success": True, "liked": liked})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True, "liked": liked})

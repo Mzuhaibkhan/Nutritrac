@@ -51,8 +51,5 @@ Answer the user's question concisely in markdown.
 User's message: "{user_msg}"
 """
 
-    try:
-        response = model.generate_content(context)
-        return jsonify({"reply": response.text})
-    except Exception as e:
-        return jsonify({"error": f"Failed to get reply: {str(e)}"}), 500
+    response = model.generate_content(context)
+    return jsonify({"reply": response.text})

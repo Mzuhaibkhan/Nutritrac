@@ -34,14 +34,10 @@ Meal type hint: "{meal_type}"
 
 def extract_json(text):
     """Robustly extract JSON from a string that might contain markdown."""
-    try:
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        return json.loads(text)
-    except Exception:
-        clean = re.sub(r'```json|```', '', text).strip()
-        return json.loads(clean)
+    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if match:
+        return json.loads(match.group(0))
+    return json.loads(text)
 
 @llm_bp.route("/analyze", methods=["POST"])
 @require_auth
@@ -82,35 +78,32 @@ def analyze():
     if not gemini_limiter.allow():
         return jsonify({"error": "Rate limit reached. Please wait a moment before trying again."}), 429
 
-    try:
-        response = model.generate_content(NUTRITION_PROMPT.format(text=text, meal_type=meal_type))
-        if not response.text:
-            return jsonify({"error": "Gemini returned an empty response."}), 500
+    response = model.generate_content(NUTRITION_PROMPT.format(text=text, meal_type=meal_type))
+    if not response.text:
+        return jsonify({"error": "Gemini returned an empty response."}), 500
 
-        nutrition = extract_json(response.text)
-        nutrition["id"] = new_id()
-        nutrition["user_id"] = g.user_id
-        nutrition["meal_type"] = meal_type
-        nutrition["log_date"] = str(date.today())
-        nutrition["logged_at"] = now_iso()
+    nutrition = extract_json(response.text)
+    nutrition["id"] = new_id()
+    nutrition["user_id"] = g.user_id
+    nutrition["meal_type"] = meal_type
+    nutrition["log_date"] = str(date.today())
+    nutrition["logged_at"] = now_iso()
 
-        if "cost" not in nutrition:
-            nutrition["cost"] = 0.0
-        if "cost_inr" not in nutrition:
-            nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
+    if "cost" not in nutrition:
+        nutrition["cost"] = 0.0
+    if "cost_inr" not in nutrition:
+        nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
 
-        # Cache the result (without user_id, id, dates)
-        cache_data = {k: v for k, v in nutrition.items() if k not in ("user_id", "id", "log_date", "logged_at")}
-        set_cached(key, cache_data)
+    # Cache the result (without user_id, id, dates)
+    cache_data = {k: v for k, v in nutrition.items() if k not in ("user_id", "id", "log_date", "logged_at")}
+    set_cached(key, cache_data)
 
-        # Save to MongoDB
-        db = get_db()
-        db.food_logs.insert_one(nutrition)
+    # Save to MongoDB
+    db = get_db()
+    db.food_logs.insert_one(nutrition)
 
-        return jsonify(serialize_doc(nutrition))
+    return jsonify(serialize_doc(nutrition))
 
-    except Exception as e:
-        return jsonify({"error": f"Gemini Error: {str(e)}"}), 500
 
 
 @llm_bp.route("/analyze-image", methods=["POST"])
@@ -137,28 +130,25 @@ def analyze_image():
         meal_type=meal_type
     )
 
-    try:
-        response = model.generate_content_with_image(prompt, image_bytes, mime_type)
-        if not response.text:
-            return jsonify({"error": "Gemini Vision returned an empty response."}), 500
+    response = model.generate_content_with_image(prompt, image_bytes, mime_type)
+    if not response.text:
+        return jsonify({"error": "Gemini Vision returned an empty response."}), 500
 
-        nutrition = extract_json(response.text)
-        nutrition["id"] = new_id()
-        nutrition["user_id"] = g.user_id
-        nutrition["meal_type"] = meal_type
-        nutrition["log_date"] = str(date.today())
-        nutrition["logged_at"] = now_iso()
+    nutrition = extract_json(response.text)
+    nutrition["id"] = new_id()
+    nutrition["user_id"] = g.user_id
+    nutrition["meal_type"] = meal_type
+    nutrition["log_date"] = str(date.today())
+    nutrition["logged_at"] = now_iso()
 
-        if "cost" not in nutrition:
-            nutrition["cost"] = 0.0
-        if "cost_inr" not in nutrition:
-            nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
+    if "cost" not in nutrition:
+        nutrition["cost"] = 0.0
+    if "cost_inr" not in nutrition:
+        nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
 
-        # Save to MongoDB
-        db = get_db()
-        db.food_logs.insert_one(nutrition)
+    # Save to MongoDB
+    db = get_db()
+    db.food_logs.insert_one(nutrition)
 
-        return jsonify(serialize_doc(nutrition))
+    return jsonify(serialize_doc(nutrition))
 
-    except Exception as e:
-        return jsonify({"error": f"Gemini Vision Error: {str(e)}"}), 500
