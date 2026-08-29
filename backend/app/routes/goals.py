@@ -6,6 +6,7 @@ from collections import defaultdict
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
 from ..auth import require_auth
+from ..schemas import GoalSchema
 from ..gemini import model, gemini_limiter, cache_key, get_cached, set_cached
 
 goals_bp = Blueprint("goals", __name__)
@@ -81,7 +82,7 @@ def _get_avg_intake(user_id: str) -> dict:
 @goals_bp.route("/goals", methods=["POST"])
 @require_auth
 def save_goal():
-    data = request.get_json()
+    data = GoalSchema(**request.get_json()).model_dump()
     db = get_db()
     
     goal_id = new_id()
@@ -104,7 +105,8 @@ def get_goal():
 @goals_bp.route("/goals/meal-plan", methods=["POST"])
 @require_auth
 def generate_meal_plan():
-    goal = request.get_json()
+    goal_schema = GoalSchema(**request.get_json())
+    goal = goal_schema.model_dump()
     db = get_db()
 
     # Check meal plan cache

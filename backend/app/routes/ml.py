@@ -3,6 +3,7 @@ import joblib
 import numpy as np
 from flask import Blueprint, request, jsonify
 from ..auth import require_auth
+from ..schemas import PredictionSchema
 
 ml_bp = Blueprint("ml", __name__)
 
@@ -45,10 +46,10 @@ def score_to_label(score: float) -> tuple[str, str]:
 @ml_bp.route("/predict", methods=["POST"])
 @require_auth
 def predict():
-    data = request.get_json()
-    calories = float(data.get("calories", 500))
-    cost     = float(data.get("cost", 10))
-    category = data.get("category", "Other")
+    data = PredictionSchema(**request.get_json())
+    calories = data.calories
+    cost     = data.cost
+    category = data.category
 
     cat_code = CATEGORY_MAP.get(category, 2)
     features = np.array([[calories, cost, cat_code]])

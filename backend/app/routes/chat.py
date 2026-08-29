@@ -4,6 +4,7 @@ from datetime import date
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db
 from ..auth import require_auth
+from ..schemas import ChatSchema
 from ..gemini import model
 
 chat_bp = Blueprint("chat", __name__)
@@ -12,11 +13,8 @@ chat_bp = Blueprint("chat", __name__)
 @chat_bp.route("/chat", methods=["POST"])
 @require_auth
 def chat():
-    data = request.get_json()
-    if not data or not data.get("message"):
-        return jsonify({"error": "Message is required"}), 400
-
-    user_msg = data["message"]
+    data = ChatSchema(**request.get_json())
+    user_msg = data.message
     db = get_db()
 
     # 1. Fetch profile/goals

@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
 from ..auth import require_auth
+from ..schemas import WaterLogSchema
 
 water_bp = Blueprint("water", __name__)
 
@@ -10,24 +11,14 @@ water_bp = Blueprint("water", __name__)
 @water_bp.route("/water", methods=["POST"])
 @require_auth
 def log_water():
-    """Log water intake in ml."""
-    data = request.get_json()
-    if not data or not data.get("amount_ml"):
-        return jsonify({"error": "amount_ml is required"}), 400
-
-    try:
-        amount_ml = int(data["amount_ml"])
-        if amount_ml <= 0 or amount_ml > 5000:
-            return jsonify({"error": "Invalid water amount"}), 400
-    except ValueError:
-        return jsonify({"error": "amount_ml must be an integer"}), 400
+    data = WaterLogSchema(**request.get_json())
 
     db = get_db()
     entry = {
         "id": new_id(),
         "user_id": g.user_id,
-        "amount_ml": amount_ml,
-        "log_date": data.get("log_date", str(date.today())),
+        "amount_ml": data.amount_ml,
+        "log_date": data.log_date,
         "logged_at": now_iso()
     }
 

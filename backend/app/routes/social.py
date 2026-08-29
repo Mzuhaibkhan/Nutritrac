@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
 from ..auth import require_auth
+from ..schemas import SocialPostSchema
 
 social_bp = Blueprint("social", __name__)
 
@@ -9,18 +10,17 @@ social_bp = Blueprint("social", __name__)
 @social_bp.route("/social/posts", methods=["POST"])
 @require_auth
 def create_post():
-    """Create a post sharing a meal or activity to the community feed."""
-    data = request.get_json()
+    data = SocialPostSchema(**request.get_json())
     db = get_db()
 
     post = {
         "id": new_id(),
         "user_id": g.user_id,
-        "username": data.get("username", "Anonymous User"),
-        "avatar_url": data.get("avatar_url"),
-        "text_content": data.get("text_content", "").strip(),
-        "shared_type": data.get("shared_type"),  # 'meal', 'activity', or 'text'
-        "shared_data": data.get("shared_data"),  # Contains nutrition or activity dict
+        "username": data.username,
+        "avatar_url": data.avatar_url,
+        "text_content": data.text_content.strip(),
+        "shared_type": data.shared_type,  # 'meal', 'activity', or 'text'
+        "shared_data": data.shared_data,  # Contains nutrition or activity dict
         "likes": [],  # List of user_ids who liked this post
         "created_at": now_iso()
     }

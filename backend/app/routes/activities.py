@@ -4,6 +4,7 @@ from collections import defaultdict
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
 from ..auth import require_auth
+from ..schemas import ActivitySchema
 
 activities_bp = Blueprint("activities", __name__)
 
@@ -17,10 +18,10 @@ VALID_ACTIVITY_TYPES = {
 @require_auth
 def create_activity():
     """Log a new activity."""
-    data = request.get_json()
+    data = ActivitySchema(**request.get_json())
     db = get_db()
 
-    activity_type = (data.get("activity_type") or "other").lower()
+    activity_type = data.activity_type.lower()
     if activity_type not in VALID_ACTIVITY_TYPES:
         activity_type = "other"
 
@@ -28,18 +29,18 @@ def create_activity():
         "id": new_id(),
         "user_id": g.user_id,
         "activity_type": activity_type,
-        "title": data.get("title", "").strip() or f"{activity_type.title()} session",
-        "steps": int(data.get("steps", 0) or 0),
-        "distance_km": float(data.get("distance_km", 0) or 0),
-        "duration_minutes": float(data.get("duration_minutes", 0) or 0),
-        "calories_burned": float(data.get("calories_burned", 0) or 0),
-        "heart_rate_avg": int(data.get("heart_rate_avg", 0) or 0) or None,
-        "activity_date": data.get("activity_date", str(date.today())),
-        "start_time": data.get("start_time") or None,
-        "end_time": data.get("end_time") or None,
-        "source": data.get("source", "manual"),
-        "source_id": data.get("source_id") or None,
-        "notes": data.get("notes", "").strip() or None,
+        "title": data.title.strip() if data.title else f"{activity_type.title()} session",
+        "steps": data.steps,
+        "distance_km": data.distance_km,
+        "duration_minutes": data.duration_minutes,
+        "calories_burned": data.calories_burned,
+        "heart_rate_avg": data.heart_rate_avg,
+        "activity_date": data.activity_date,
+        "start_time": data.start_time,
+        "end_time": data.end_time,
+        "source": data.source,
+        "source_id": data.source_id,
+        "notes": data.notes.strip() if data.notes else None,
         "created_at": now_iso()
     }
 

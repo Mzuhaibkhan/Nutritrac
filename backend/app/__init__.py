@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
+from pydantic import ValidationError
 import traceback
 import logging
 from flask_cors import CORS
@@ -63,6 +64,15 @@ def create_app():
         }).data
         response.content_type = "application/json"
         return response
+
+    @app.errorhandler(ValidationError)
+    def handle_pydantic_validation_error(e):
+        """Return structured 400 Bad Request for Pydantic validation errors."""
+        return jsonify({
+            "error": "Validation Error",
+            "details": e.errors(),
+            "code": 400
+        }), 400
 
     @app.errorhandler(Exception)
     def handle_exception(e):

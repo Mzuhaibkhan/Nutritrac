@@ -5,6 +5,7 @@ from datetime import date
 from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, new_id, now_iso, serialize_doc
 from ..auth import require_auth
+from ..schemas import LLMAnalyzeSchema
 from ..gemini import model, gemini_limiter, cache_key, get_cached, set_cached
 
 llm_bp = Blueprint("llm", __name__)
@@ -42,12 +43,10 @@ def extract_json(text):
 @llm_bp.route("/analyze", methods=["POST"])
 @require_auth
 def analyze():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No description provided"}), 400
+    data = LLMAnalyzeSchema(**request.get_json())
 
-    text = data.get("text", "").strip()
-    meal_type = data.get("meal_type", "lunch")
+    text = data.text.strip()
+    meal_type = data.meal_type
 
     if not text:
         return jsonify({"error": "No description provided"}), 400
