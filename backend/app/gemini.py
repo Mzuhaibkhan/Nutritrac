@@ -37,7 +37,10 @@ class GenerativeModelWrapper:
                     model_name="gemini-2.0-flash-lite",
                     safety_settings=SAFETY_SETTINGS
                 )
-                return gemini_model.generate_content(prompt)
+                return gemini_model.generate_content(
+                    prompt,
+                    request_options={"timeout": 8.0}
+                )
             except Exception as e:
                 print(f"Gemini failed: {e}. Trying other providers...")
 
@@ -56,7 +59,7 @@ class GenerativeModelWrapper:
                 if "json" in prompt.lower():
                     payload["response_format"] = { "type": "json_object" }
 
-                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
                 resp.raise_for_status()
                 res_json = resp.json()
                 text = res_json["choices"][0]["message"]["content"]
@@ -79,7 +82,7 @@ class GenerativeModelWrapper:
                 if "json" in prompt.lower():
                     payload["response_format"] = { "type": "json_object" }
 
-                resp = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp = requests.post("https://api.x.ai/v1/chat/completions", json=payload, headers=headers, timeout=5)
                 resp.raise_for_status()
                 res_json = resp.json()
                 text = res_json["choices"][0]["message"]["content"]
@@ -108,7 +111,7 @@ class GenerativeModelWrapper:
                         "mime_type": mime_type,
                         "data": image_bytes
                     }
-                ])
+                ], request_options={"timeout": 8.0})
             except Exception as e:
                 print(f"Gemini Vision failed: {e}. Trying other providers...")
 
@@ -142,7 +145,7 @@ class GenerativeModelWrapper:
                 if "json" in prompt.lower():
                     payload["response_format"] = { "type": "json_object" }
 
-                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=30)
+                resp = requests.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=5)
                 resp.raise_for_status()
                 res_json = resp.json()
                 text = res_json["choices"][0]["message"]["content"]
