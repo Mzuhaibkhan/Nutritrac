@@ -2,10 +2,9 @@
 Authentication middleware for NutriTrack AI backend.
 Verifies Supabase JWT tokens and extracts user_id.
 """
-import os
 from functools import wraps
 from flask import request, jsonify, g
-
+from .supabase_client import get_supabase
 
 def require_auth(f):
     """Decorator that enforces JWT authentication on a route.
@@ -21,22 +20,13 @@ def require_auth(f):
 
         token = auth_header.split(" ", 1)[1]
         try:
-            import jwt
-            jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
-            if not jwt_secret:
-                raise ValueError("SUPABASE_JWT_SECRET is missing. Cannot validate token locally.")
+            supabase = get_supabase()
+            user_res = supabase.auth.get_user(token)
+            if not user_res or not user_res.user:
+                raise ValueError("Invalid user session")
                 
-            payload = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=["HS256"],
-                audience="authenticated"
-            )
-            g.user_id = payload["sub"]
+            g.user_id = user_res.user.id
             g.user_token = token
-        except jwt.ExpiredSignatureError:
-            from werkzeug.exceptions import Unauthorized
-            raise Unauthorized("Token expired")
         except Exception as e:
             from werkzeug.exceptions import Unauthorized
             import logging
