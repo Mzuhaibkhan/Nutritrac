@@ -81,7 +81,12 @@ def analyze():
     if not response.text:
         return jsonify({"error": "Gemini returned an empty response."}), 500
 
-    nutrition = extract_json(response.text)
+    try:
+        nutrition = extract_json(response.text)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to extract JSON from model: {response.text}")
+        return jsonify({"error": "Failed to parse nutrition data from AI."}), 500
     nutrition["id"] = new_id()
     nutrition["user_id"] = g.user_id
     nutrition["meal_type"] = meal_type
@@ -98,8 +103,11 @@ def analyze():
     set_cached(key, cache_data)
 
     # Save to MongoDB
-    db = get_db()
-    db.food_logs.insert_one(nutrition)
+    try:
+        db = get_db()
+        db.food_logs.insert_one(nutrition)
+    except Exception as db_err:
+        print(f"Database error (skipping save): {db_err}")
 
     return jsonify(serialize_doc(nutrition))
 
@@ -133,7 +141,12 @@ def analyze_image():
     if not response.text:
         return jsonify({"error": "Gemini Vision returned an empty response."}), 500
 
-    nutrition = extract_json(response.text)
+    try:
+        nutrition = extract_json(response.text)
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to extract JSON from vision model: {response.text}")
+        return jsonify({"error": "Failed to parse nutrition data from image AI."}), 500
     nutrition["id"] = new_id()
     nutrition["user_id"] = g.user_id
     nutrition["meal_type"] = meal_type
@@ -146,8 +159,11 @@ def analyze_image():
         nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
 
     # Save to MongoDB
-    db = get_db()
-    db.food_logs.insert_one(nutrition)
+    try:
+        db = get_db()
+        db.food_logs.insert_one(nutrition)
+    except Exception as db_err:
+        print(f"Database error (skipping save): {db_err}")
 
     return jsonify(serialize_doc(nutrition))
 
