@@ -24,20 +24,30 @@ class MockResponse:
         self.text = text
 
 class GenerativeModelWrapper:
-    def generate_content(self, prompt: str) -> MockResponse:
-        gemini_key = os.environ.get("GEMINI_API_KEY", "")
-        openai_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("GPT_API_KEY", "")
-        grok_key = os.environ.get("GROK_API_KEY", "") or os.environ.get("XAI_API_KEY", "")
+    def __init__(self):
+        """Initialize AI provider clients once at startup."""
+        self._gemini_model = None
+        self._gemini_key = os.environ.get("GEMINI_API_KEY", "")
+        self._openai_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("GPT_API_KEY", "")
+        self._grok_key = os.environ.get("GROK_API_KEY", "") or os.environ.get("XAI_API_KEY", "")
 
-        # 1. Try Gemini
-        if gemini_key:
+        # Pre-initialize Gemini model once (avoids ~200-500ms per-request overhead)
+        if self._gemini_key:
             try:
-                genai.configure(api_key=gemini_key)
-                gemini_model = genai.GenerativeModel(
+                genai.configure(api_key=self._gemini_key)
+                self._gemini_model = genai.GenerativeModel(
                     model_name="gemini-2.0-flash-lite",
                     safety_settings=SAFETY_SETTINGS
                 )
-                return gemini_model.generate_content(
+                print("✓ Gemini model initialized at startup")
+            except Exception as e:
+                print(f"⚠ Gemini init failed at startup: {e}. Will use fallback providers.")
+
+    def generate_content(self, prompt: str) -> MockResponse:
+        # 1. Try Gemini (pre-initialized)
+        if self._gemini_model:
+            try:
+                return self._gemini_model.generate_content(
                     prompt,
                     request_options={"timeout": 8.0}
                 )
@@ -45,11 +55,11 @@ class GenerativeModelWrapper:
                 print(f"Gemini failed: {e}. Trying other providers...")
 
         # 2. Try OpenAI (GPT)
-        if openai_key:
+        if self._openai_key:
             try:
                 import requests
                 headers = {
-                    "Authorization": f"Bearer {openai_key}",
+                    "Authorization": f"Bearer {self._openai_key}",
                     "Content-Type": "application/json"
                 }
                 payload = {
@@ -68,11 +78,11 @@ class GenerativeModelWrapper:
                 print(f"OpenAI GPT failed: {e}. Trying other providers...")
 
         # 3. Try xAI (Grok)
-        if grok_key:
+        if self._grok_key:
             try:
                 import requests
                 headers = {
-                    "Authorization": f"Bearer {grok_key}",
+                    "Authorization": f"Bearer {self._grok_key}",
                     "Content-Type": "application/json"
                 }
                 payload = {
@@ -94,18 +104,10 @@ class GenerativeModelWrapper:
         return self._generate_fallback(prompt)
 
     def generate_content_with_image(self, prompt: str, image_bytes: bytes, mime_type: str) -> MockResponse:
-        gemini_key = os.environ.get("GEMINI_API_KEY", "")
-        openai_key = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("GPT_API_KEY", "")
-
-        # 1. Try Gemini
-        if gemini_key:
+        # 1. Try Gemini (pre-initialized)
+        if self._gemini_model:
             try:
-                genai.configure(api_key=gemini_key)
-                gemini_model = genai.GenerativeModel(
-                    model_name="gemini-2.0-flash-lite",
-                    safety_settings=SAFETY_SETTINGS
-                )
-                return gemini_model.generate_content([
+                return self._gemini_model.generate_content([
                     prompt,
                     {
                         "mime_type": mime_type,
@@ -116,13 +118,13 @@ class GenerativeModelWrapper:
                 print(f"Gemini Vision failed: {e}. Trying other providers...")
 
         # 2. Try OpenAI (GPT)
-        if openai_key:
+        if self._openai_key:
             try:
                 import base64
                 import requests
                 base64_image = base64.b64encode(image_bytes).decode("utf-8")
                 headers = {
-                    "Authorization": f"Bearer {openai_key}",
+                    "Authorization": f"Bearer {self._openai_key}",
                     "Content-Type": "application/json"
                 }
                 payload = {
