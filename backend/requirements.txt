@@ -12,3 +12,4 @@ requests
 pydantic>=2.0.0
 PyJWT
 flask-compress
+cachetools>=5.0.0
