@@ -59,7 +59,8 @@ def analytics():
         "daily_nutrition": sorted(daily.values(), key=lambda x: x["date"]),
         "categories": dict(categories),
         "daily_activities": sorted(activity_daily.values(), key=lambda x: x["date"]),
-        "raw_rows": serialize_docs(rows),
+        # raw_rows is expensive — only included when explicitly requested
+        **({"raw_rows": serialize_docs(rows)} if request.args.get("include_raw") == "true" else {}),
     })
 
 
