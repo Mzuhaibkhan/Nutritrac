@@ -18,10 +18,23 @@ def analytics():
     from_date = str(date.today() - timedelta(days=days))
     db = get_db()
 
-    rows = list(db.food_logs.find({
-        "user_id": g.user_id,
-        "log_date": {"$gte": from_date}
-    }).sort("log_date", 1))
+    include_raw = request.args.get("include_raw") == "true"
+    # Project only fields needed for aggregation unless raw documents are requested
+    food_projection = {"_id": 0} if include_raw else {
+        "_id": 0,
+        "log_date": 1,
+        "calories": 1,
+        "protein_g": 1,
+        "carbs_g": 1,
+        "fats_g": 1,
+        "cost": 1,
+        "category": 1,
+    }
+
+    rows = list(db.food_logs.find(
+        {"user_id": g.user_id, "log_date": {"$gte": from_date}},
+        food_projection
+    ).sort("log_date", 1))
 
     # Aggregate by date for chart-ready data
     daily = {}
@@ -40,12 +53,19 @@ def analytics():
     for r in rows:
         categories[r.get("category", "Other")] += r.get("cost", 0) or 0
 
-    # Activity data
+    # Activity data - project only chart fields
     activity_daily = {}
-    activity_rows = list(db.activities.find({
-        "user_id": g.user_id,
-        "activity_date": {"$gte": from_date}
-    }).sort("activity_date", 1))
+    activity_projection = {
+        "_id": 0,
+        "activity_date": 1,
+        "steps": 1,
+        "calories_burned": 1,
+        "duration_minutes": 1,
+    }
+    activity_rows = list(db.activities.find(
+        {"user_id": g.user_id, "activity_date": {"$gte": from_date}},
+        activity_projection
+    ).sort("activity_date", 1))
 
     for r in activity_rows:
         d = r["activity_date"]
@@ -60,7 +80,7 @@ def analytics():
         "categories": dict(categories),
         "daily_activities": sorted(activity_daily.values(), key=lambda x: x["date"]),
         # raw_rows is expensive — only included when explicitly requested
-        **({"raw_rows": serialize_docs(rows)} if request.args.get("include_raw") == "true" else {}),
+        **({"raw_rows": serialize_docs(rows)} if include_raw else {}),
     })
 
 
@@ -71,10 +91,10 @@ def daily_summary():
     to_date = request.args.get("to")
     db = get_db()
 
-    rows = list(db.food_logs.find({
-        "user_id": g.user_id,
-        "log_date": {"$gte": from_date, "$lte": to_date}
-    }))
+    rows = list(db.food_logs.find(
+        {"user_id": g.user_id, "log_date": {"$gte": from_date, "$lte": to_date}},
+        {"_id": 0, "log_date": 1, "calories": 1}
+    ))
 
     calorie_goal = int(os.environ.get("DEFAULT_DAILY_CALORIE_GOAL", 2000))
 
