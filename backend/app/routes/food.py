@@ -20,7 +20,8 @@ def get_logs():
     elif from_date and to_date:
         query["log_date"] = {"$gte": from_date, "$lte": to_date}
 
-    docs = db.food_logs.find(query).sort("logged_at", -1)
+    # Use projection to avoid transferring MongoDB internal _id over the wire
+    docs = db.food_logs.find(query, {"_id": 0}).sort("logged_at", -1)
     return jsonify(serialize_docs(docs))
 
 
