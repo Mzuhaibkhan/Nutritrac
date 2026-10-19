@@ -138,16 +138,27 @@ def strava_sync():
     strava_activities = resp.json()
 
     synced = 0
-    for act in strava_activities:
-        strava_id = str(act["id"])
+    if not strava_activities:
+        return jsonify({"synced": 0, "total_found": 0})
 
-        # Skip if already synced
-        existing = db.activities.find_one({
-            "user_id": g.user_id,
-            "source": "strava",
-            "source_id": strava_id
-        })
-        if existing:
+    # Bulk check existing synced activities to eliminate N+1 queries
+    strava_ids = [str(act["id"]) for act in strava_activities if "id" in act]
+    existing_ids = set()
+    if strava_ids:
+        existing_docs = db.activities.find(
+            {
+                "user_id": g.user_id,
+                "source": "strava",
+                "source_id": {"$in": strava_ids}
+            },
+            {"source_id": 1, "_id": 0}
+        )
+        existing_ids = {doc["source_id"] for doc in existing_docs}
+
+    entries_to_insert = []
+    for act in strava_activities:
+        strava_id = str(act.get("id", ""))
+        if not strava_id or strava_id in existing_ids:
             continue
 
         # Map to our schema
@@ -170,9 +181,11 @@ def strava_sync():
             "source_id": strava_id,
             "created_at": now_iso()
         }
+        entries_to_insert.append(entry)
 
-        db.activities.insert_one(entry)
-        synced += 1
+    if entries_to_insert:
+        db.activities.insert_many(entries_to_insert)
+        synced = len(entries_to_insert)
 
     return jsonify({"synced": synced, "total_found": len(strava_activities)})
 
