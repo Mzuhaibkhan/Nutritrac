@@ -7,6 +7,7 @@ import time
 import hashlib
 import threading
 import google.generativeai as genai
+from cachetools import TTLCache
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
@@ -419,9 +420,10 @@ class RateLimiter:
 gemini_limiter = RateLimiter(max_calls=10, period=60)
 
 
-# ── In-Memory Cache ───────────────────────────────────────────
-_nutrition_cache: dict[str, dict] = {}
-MAX_CACHE_SIZE = 500
+# ── In-Memory Cache (Thread-Safe LRU + TTL) ────────────────────
+_cache_lock = threading.Lock()
+# 7-day TTL cache with max 1,000 entries and true LRU eviction
+_nutrition_cache: TTLCache = TTLCache(maxsize=1000, ttl=86400 * 7)
 
 
 def cache_key(text: str, meal_type: str = "") -> str:
@@ -432,14 +434,11 @@ def cache_key(text: str, meal_type: str = "") -> str:
 
 def get_cached(key: str) -> dict | None:
     """Get a cached nutrition result."""
-    return _nutrition_cache.get(key)
+    with _cache_lock:
+        return _nutrition_cache.get(key)
 
 
 def set_cached(key: str, value: dict) -> None:
-    """Store a nutrition result in cache."""
-    if len(_nutrition_cache) >= MAX_CACHE_SIZE:
-        # Remove oldest 100 entries
-        oldest_keys = list(_nutrition_cache.keys())[:100]
-        for k in oldest_keys:
-            _nutrition_cache.pop(k, None)
-    _nutrition_cache[key] = value
+    """Store a nutrition result in cache with LRU eviction."""
+    with _cache_lock:
+        _nutrition_cache[key] = value
