@@ -5,6 +5,7 @@ from pydantic import ValidationError
 import traceback
 import logging
 from flask_cors import CORS
+from flask_compress import Compress
 
 
 def create_app():
@@ -18,6 +19,9 @@ def create_app():
     
     # Enable CORS for frontend clients
     CORS(app, origins=allowed_origins)
+
+    # Enable gzip/brotli compression for JSON and HTML responses
+    Compress(app)
 
     from .routes.food import food_bp
     from .routes.llm import llm_bp
