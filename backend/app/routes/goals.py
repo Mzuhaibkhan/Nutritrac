@@ -1,9 +1,11 @@
 import os
 import json
 import re
+import threading
 from datetime import date, timedelta, datetime
 from collections import defaultdict
 from flask import Blueprint, request, jsonify, g
+from cachetools import TTLCache
 from ..mongo_client import get_db, serialize_docs, serialize_doc, new_id, now_iso
 from ..auth import require_auth
 from ..schemas import GoalSchema
@@ -49,8 +51,9 @@ Return ONLY valid JSON with NO extra text:
   "projected_progress": "What the user can expect after {target_weeks} weeks"
 }}"""
 
-# Cache for meal plans by goal hash
-_meal_plan_cache = {}
+# Thread-safe LRU cache for meal plans with 24-hour TTL (replaces unbounded dict)
+_meal_plan_lock = threading.Lock()
+_meal_plan_cache: TTLCache = TTLCache(maxsize=100, ttl=86400)
 
 
 def _goal_hash(goal: dict) -> str:
@@ -111,8 +114,9 @@ def generate_meal_plan():
 
     # Check meal plan cache
     goal_h = _goal_hash(goal)
-    if goal_h in _meal_plan_cache:
-        cached_plan = _meal_plan_cache[goal_h]
+    with _meal_plan_lock:
+        cached_plan = _meal_plan_cache.get(goal_h)
+    if cached_plan:
         # Still save to DB
         goal["id"] = new_id()
         goal["user_id"] = g.user_id
@@ -149,7 +153,8 @@ def generate_meal_plan():
     plan = json.loads(raw)
 
     # Cache the plan
-    _meal_plan_cache[goal_h] = plan
+    with _meal_plan_lock:
+        _meal_plan_cache[goal_h] = plan
 
     # Save goal + plan
     goal["id"] = new_id()

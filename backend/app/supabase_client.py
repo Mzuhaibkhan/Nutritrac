@@ -36,5 +36,6 @@ def get_supabase() -> Client:
     return _supabase
 
 
-supabase = get_supabase()
-
+# NOTE: Do not call get_supabase() at module level.
+# The client is created lazily on the first auth request
+# to avoid crashing the app if env vars are missing at startup.

@@ -22,9 +22,22 @@ def get_db():
     """Get the MongoDB database instance (lazy singleton)."""
     global _client, _db
     if _db is None:
-        _client = MongoClient(MONGO_URI)
+        # Configurable connection pool size suited for free/tier-limited clusters
+        max_pool_size = int(os.environ.get("MONGO_MAX_POOL_SIZE", 10))
+        min_pool_size = int(os.environ.get("MONGO_MIN_POOL_SIZE", 1))
+        timeout_ms = int(os.environ.get("MONGO_TIMEOUT_MS", 5000))
+
+        _client = MongoClient(
+            MONGO_URI,
+            maxPoolSize=max_pool_size,
+            minPoolSize=min_pool_size,
+            serverSelectionTimeoutMS=timeout_ms,
+        )
         _db = _client[MONGO_DB_NAME]
-        _ensure_indexes(_db)
+
+        # Gate index creation behind RUN_MIGRATIONS flag to eliminate cold-start overhead
+        if os.environ.get("RUN_MIGRATIONS", "").lower() in ("true", "1", "yes"):
+            _ensure_indexes(_db)
     return _db
 
 
