@@ -1,7 +1,16 @@
 "use client";
+import dynamic from "next/dynamic";
 import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
-import LogForm from "@/components/LogForm";
+
+const LogForm = dynamic(() => import("@/components/LogForm"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--base-secondary-dark)" }}>
+      <p className="mono">▶ Loading meal log form...</p>
+    </div>
+  ),
+});
 
 export default function LogPage() {
   return (
