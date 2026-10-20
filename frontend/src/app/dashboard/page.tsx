@@ -6,10 +6,24 @@ import TimeRangeSelector from "@/components/TimeRangeSelector";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
-import CalorieChart from "@/components/charts/CalorieChart";
-import MacroChart from "@/components/charts/MacroChart";
-import SpendChart from "@/components/charts/SpendChart";
-import ActivityChart from "@/components/charts/ActivityChart";
+import dynamic from "next/dynamic";
+
+const CalorieChart = dynamic(() => import("@/components/charts/CalorieChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading calorie chart...</div>,
+});
+const MacroChart = dynamic(() => import("@/components/charts/MacroChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading macro chart...</div>,
+});
+const SpendChart = dynamic(() => import("@/components/charts/SpendChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading spending chart...</div>,
+});
+const ActivityChart = dynamic(() => import("@/components/charts/ActivityChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading activity chart...</div>,
+});
 
 interface DaySummary {
   total_calories: number;
