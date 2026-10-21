@@ -7,6 +7,7 @@ from ..mongo_client import get_db, new_id, now_iso, serialize_doc
 from ..auth import require_auth
 from ..schemas import LLMAnalyzeSchema
 from ..gemini import model, gemini_limiter, cache_key, get_cached, set_cached
+from .ml import compute_prediction
 
 llm_bp = Blueprint("llm", __name__)
 
@@ -66,6 +67,16 @@ def analyze():
         if "cost_inr" not in nutrition:
             nutrition["cost_inr"] = round(nutrition.get("cost", 0.0) * 83.5, 2)
 
+        # Compute ML health score server-side to eliminate frontend waterfall
+        pred = compute_prediction(
+            calories=float(nutrition.get("calories", 0) or 0),
+            cost=float(nutrition.get("cost", 0) or 0),
+            category=str(nutrition.get("category", "Other")),
+        )
+        nutrition["smart_score"] = pred["score"]
+        nutrition["smart_label"] = pred["label"]
+        nutrition["smart_advice"] = pred["advice"]
+
         try:
             db = get_db()
             db.food_logs.insert_one(nutrition)
@@ -97,6 +108,16 @@ def analyze():
         nutrition["cost"] = 0.0
     if "cost_inr" not in nutrition:
         nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
+
+    # Compute ML health score server-side
+    pred = compute_prediction(
+        calories=float(nutrition.get("calories", 0) or 0),
+        cost=float(nutrition.get("cost", 0) or 0),
+        category=str(nutrition.get("category", "Other")),
+    )
+    nutrition["smart_score"] = pred["score"]
+    nutrition["smart_label"] = pred["label"]
+    nutrition["smart_advice"] = pred["advice"]
 
     # Cache the result (without user_id, id, dates)
     cache_data = {k: v for k, v in nutrition.items() if k not in ("user_id", "id", "log_date", "logged_at")}
@@ -157,6 +178,16 @@ def analyze_image():
         nutrition["cost"] = 0.0
     if "cost_inr" not in nutrition:
         nutrition["cost_inr"] = round(nutrition["cost"] * 83.5, 2)
+
+    # Compute ML health score server-side
+    pred = compute_prediction(
+        calories=float(nutrition.get("calories", 0) or 0),
+        cost=float(nutrition.get("cost", 0) or 0),
+        category=str(nutrition.get("category", "Other")),
+    )
+    nutrition["smart_score"] = pred["score"]
+    nutrition["smart_label"] = pred["label"]
+    nutrition["smart_advice"] = pred["advice"]
 
     # Save to MongoDB
     try:
