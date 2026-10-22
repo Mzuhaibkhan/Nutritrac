@@ -100,6 +100,17 @@ After a deep-dive into the full codebase — **14 backend route files**, **9 fro
 | **3.4** Merge `/analyze` + `/predict` into a single backend endpoint to eliminate waterfall | [`llm.py`](file:///c:/Github/Nutritrac/Nutritrac/backend/app/routes/llm.py), [`manual_food.py`](file:///c:/Github/Nutritrac/Nutritrac/backend/app/routes/manual_food.py), [`ml.py`](file:///c:/Github/Nutritrac/Nutritrac/backend/app/routes/ml.py), [`LogForm.tsx`](file:///c:/Github/Nutritrac/Nutritrac/frontend/src/components/LogForm.tsx) | 🔴 **-1 round trip per log** | ✅ Done |
 | **3.5** Add `loading.tsx` skeletons for dashboard and log pages | `dashboard/loading.tsx`, `log/loading.tsx` | 🟡 **Perceived speed** | ✅ Done |
 | **3.6** Optimize middleware — only refresh session when token is within 5 min of expiry | [`middleware.ts`](file:///c:/Github/Nutritrac/Nutritrac/frontend/src/lib/supabase/middleware.ts) | 🟡 **Fewer Supabase calls** | ✅ Done |
+### Phase 3: ⚡ Frontend Performance — Bundle & Rendering (Est. 3-5 hours)
+*Optimize Next.js rendering strategy, reduce JavaScript payload.*
+
+| Task | Files | Impact |
+|------|-------|--------|
+| **3.1** Convert landing page to Server Component — extract GSAP animations into a small client component | [`page.tsx`](file:///c:/Github/Nutritrac/Nutritrac/frontend/src/app/page.tsx) | 🟠 **Faster FCP, less JS** |
+| **3.2** Re-enable Next.js image optimization (remove `unoptimized: true`) | [`next.config.ts`](file:///c:/Github/Nutritrac/Nutritrac/frontend/next.config.ts) | 🟡 **Auto WebP + lazy load** |
+| **3.3** Use dynamic imports for heavy components (`LogForm`, charts, `GoalForm`) | Various page files | 🟡 **Smaller initial bundle** |
+| **3.4** Merge `/analyze` + `/predict` into a single backend endpoint to eliminate waterfall | [`llm.py`](file:///c:/Github/Nutritrac/Nutritrac/backend/app/routes/llm.py), [`LogForm.tsx`](file:///c:/Github/Nutritrac/Nutritrac/frontend/src/components/LogForm.tsx) | 🔴 **-1 round trip per log** |
+| **3.5** Add `loading.tsx` skeletons for dashboard and log pages | `frontend/src/app/dashboard/`, `frontend/src/app/log/` | 🟡 **Perceived speed** |
+| **3.6** Optimize middleware — only refresh session when token is within 5 min of expiry | [`middleware.ts`](file:///c:/Github/Nutritrac/Nutritrac/frontend/middleware.ts) | 🟡 **Fewer Supabase calls** |
 
 **Deliverables:** Landing page renders server-side, dashboard loads faster, fewer API round-trips.
 
