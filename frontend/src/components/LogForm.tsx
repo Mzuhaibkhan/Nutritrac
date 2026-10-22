@@ -123,17 +123,23 @@ export default function LogForm({ onSuccess }: LogFormProps) {
         if (!res.ok) throw new Error(data.error || "Saving failed");
       }
 
-      // Fetch ML prediction score
-      const mlRes = await apiPost("/api/predict", {
-        calories: data.calories,
-        cost: data.cost,
-        category: data.category
-      });
-      if (mlRes.ok) {
-        const mlData = await mlRes.json();
-        data.smart_score = mlData.score;
-        data.smart_label = mlData.label;
-        data.smart_advice = mlData.advice;
+      // Use server-side ML prediction if provided (eliminating client waterfall round-trip)
+      if (data.smart_score === undefined && data.calories !== undefined) {
+        try {
+          const mlRes = await apiPost("/api/predict", {
+            calories: data.calories,
+            cost: data.cost,
+            category: data.category,
+          });
+          if (mlRes.ok) {
+            const mlData = await mlRes.json();
+            data.smart_score = mlData.score;
+            data.smart_label = mlData.label;
+            data.smart_advice = mlData.advice;
+          }
+        } catch (e) {
+          console.warn("Fallback ML prediction request error", e);
+        }
       }
 
       setResult(data);
