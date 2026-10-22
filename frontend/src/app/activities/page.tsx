@@ -5,7 +5,12 @@ import LenisProvider from "@/components/LenisProvider";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
-import ActivityChart from "@/components/charts/ActivityChart";
+import dynamic from "next/dynamic";
+
+const ActivityChart = dynamic(() => import("@/components/charts/ActivityChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading activity chart...</div>,
+});
 
 interface Activity {
   id: string;

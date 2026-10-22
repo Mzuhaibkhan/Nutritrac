@@ -4,7 +4,12 @@ import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
-import CombinedCompareChart from "@/components/charts/CombinedCompareChart";
+import dynamic from "next/dynamic";
+
+const CombinedCompareChart = dynamic(() => import("@/components/charts/CombinedCompareChart"), {
+  ssr: false,
+  loading: () => <div className="card mono" style={{ height: 320, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--base-secondary-dark)" }}>Loading comparison chart...</div>,
+});
 
 interface PeriodData {
   calories?: number;

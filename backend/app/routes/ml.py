@@ -43,14 +43,8 @@ def score_to_label(score: float) -> tuple[str, str]:
     return label, advice_map[label]
 
 
-@ml_bp.route("/predict", methods=["POST"])
-@require_auth
-def predict():
-    data = PredictionSchema(**request.get_json())
-    calories = data.calories
-    cost     = data.cost
-    category = data.category
-
+def compute_prediction(calories: float, cost: float, category: str) -> dict:
+    """Compute ML health score, label, and advice directly for unified pipelines."""
     cat_code = CATEGORY_MAP.get(category, 2)
     features = np.array([[calories, cost, cat_code]])
 
@@ -66,4 +60,11 @@ def predict():
         score = float(np.clip(base - cal_penalty - cost_penalty, 0, 100))
 
     label, advice = score_to_label(score)
-    return jsonify({"score": round(score, 1), "label": label, "advice": advice})
+    return {"score": round(score, 1), "label": label, "advice": advice}
+
+
+@ml_bp.route("/predict", methods=["POST"])
+@require_auth
+def predict():
+    data = PredictionSchema(**request.get_json())
+    return jsonify(compute_prediction(data.calories, data.cost, data.category))

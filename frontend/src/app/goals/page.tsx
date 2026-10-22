@@ -1,7 +1,16 @@
 "use client";
+import dynamic from "next/dynamic";
 import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
-import GoalForm from "@/components/GoalForm";
+
+const GoalForm = dynamic(() => import("@/components/GoalForm"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--base-secondary-dark)" }}>
+      <p className="mono">▶ Loading goal planner...</p>
+    </div>
+  ),
+});
 
 export default function GoalsPage() {
   return (

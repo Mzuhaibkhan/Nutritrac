@@ -1,13 +1,8 @@
-"use client";
-import { useEffect, useRef } from "react";
 import HeroSection from "@/components/HeroSection";
 import Nav from "@/components/Nav";
 import LenisProvider from "@/components/LenisProvider";
+import HomeAnimations from "@/components/HomeAnimations";
 import Link from "next/link";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const SKILLS = [
   ["Calorie Tracking", "Macro Analysis", "AI Nutrition", "Smart Budget", "Meal Planning", "Food History"],
@@ -23,47 +18,16 @@ const HOW_CARDS = [
 ];
 
 export default function Home() {
-  const stripRefs = useRef<HTMLDivElement[]>([]);
-  const howRef = useRef<HTMLElement>(null);
-  const ctaRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    // Horizontal strips parallax
-    const speeds = [0.3, -0.2, 0.25];
-    ScrollTrigger.create({
-      trigger: ".outro-section",
-      start: "top bottom",
-      end: "bottom top",
-      scrub: 1,
-      onUpdate: (self) => {
-        stripRefs.current.forEach((strip, i) => {
-          const dir = speeds[i];
-          gsap.set(strip, { x: `${self.progress * 100 * dir}%` });
-        });
-      },
-    });
-
-    // How it works scroll reveal
-    const cards = document.querySelectorAll(".how-card");
-    cards.forEach((card, i) => {
-      gsap.fromTo(card, { opacity: 0, y: 60 }, {
-        opacity: 1, y: 0, duration: 0.7, delay: i * 0.15, ease: "power3.out",
-        scrollTrigger: { trigger: card, start: "top 85%" },
-      });
-    });
-
-    return () => ScrollTrigger.getAll().forEach(t => t.kill());
-  }, []);
-
   return (
     <LenisProvider>
       <Nav />
+      <HomeAnimations />
 
       {/* ── Hero ────────────────────────────────────────────── */}
       <HeroSection />
 
       {/* ── How it works ────────────────────────────────────── */}
-      <section ref={howRef} style={{ position: "relative", width: "100vw", minHeight: "100svh", backgroundColor: "var(--base-300)", color: "var(--base-100)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "8rem 0" }}>
+      <section style={{ position: "relative", width: "100vw", minHeight: "100svh", backgroundColor: "var(--base-300)", color: "var(--base-100)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "8rem 0" }}>
         <div style={{ position: "absolute", top: 0, left: 0, width: "100%", padding: "1.5rem 2.75rem", display: "flex", justifyContent: "space-between" }}>
           <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>▶ System Pipeline</p>
           <p className="mono" style={{ color: "var(--base-secondary-dark)" }}>[ How it works ]</p>
@@ -94,7 +58,7 @@ export default function Home() {
       <section className="outro-section" style={{ position: "relative", width: "100vw", minHeight: "100svh", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "space-around", width: "150vw", left: "-25vw" }}>
           {SKILLS.map((row, i) => (
-            <div key={i} ref={el => { if (el) stripRefs.current[i] = el; }} className="strip-row">
+            <div key={i} className="strip-row">
               {[...row, ...row].map((skill, j) => (
                 <span key={j} className={`tag ${SKILL_COLORS[i % 3]}`} style={{ whiteSpace: "nowrap", padding: "6px 14px", fontSize: "0.78rem" }}>{skill}</span>
               ))}
@@ -113,7 +77,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA footer ──────────────────────────────────────── */}
-      <section ref={ctaRef} style={{ backgroundColor: "var(--base-300)", padding: "5rem 0" }}>
+      <section style={{ backgroundColor: "var(--base-300)", padding: "5rem 0" }}>
         <div className="container" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "2rem" }}>
           <div>
             <p className="mono" style={{ color: "var(--base-secondary-dark)", marginBottom: "0.75rem" }}>▶ Ready to start?</p>

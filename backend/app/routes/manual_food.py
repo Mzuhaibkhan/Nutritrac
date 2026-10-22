@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, g
 from ..mongo_client import get_db, new_id, now_iso, serialize_doc
 from ..auth import require_auth
 from ..schemas import ManualFoodSchema
+from .ml import compute_prediction
 from datetime import date
 
 manual_food_bp = Blueprint("manual_food", __name__)
@@ -37,6 +38,16 @@ def manual_log():
         "log_date": data.log_date,
         "logged_at": now_iso(),
     }
+
+    # Compute ML health score server-side
+    pred = compute_prediction(
+        calories=float(entry["calories"]),
+        cost=float(entry["cost"]),
+        category=entry["category"],
+    )
+    entry["smart_score"] = pred["score"]
+    entry["smart_label"] = pred["label"]
+    entry["smart_advice"] = pred["advice"]
 
     db = get_db()
     db.food_logs.insert_one(entry)
