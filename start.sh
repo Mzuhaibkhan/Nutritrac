@@ -11,10 +11,10 @@ export PORT="${PORT:-8080}"
 envsubst '$PORT' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 echo "  nginx will listen on :$PORT"
 
-# Start Flask backend (background)
+# Start Flask backend with production Gunicorn configuration
 cd /app/backend
-gunicorn --bind 127.0.0.1:5000 --workers 2 --timeout 120 run:app &
-echo "  Flask started on :5000"
+gunicorn --config gunicorn.conf.py run:app &
+echo "  Flask started on :5000 (Gunicorn with async gevent workers)"
 
 # Start Next.js standalone (background)
 cd /app/frontend
