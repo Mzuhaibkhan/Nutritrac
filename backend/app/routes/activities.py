@@ -82,43 +82,84 @@ def delete_activity(activity_id):
 @activities_bp.route("/activities/summary", methods=["GET"])
 @require_auth
 def activity_summary():
-    """Get aggregated activity data for a time range."""
+    """Get aggregated activity data for a time range using server-side MongoDB aggregation."""
     range_ = request.args.get("range", "week")
     range_days = {"day": 1, "week": 7, "month": 30, "3m": 90, "6m": 180, "year": 365}
     days = range_days.get(range_, 7)
     from_date = str(date.today() - timedelta(days=days))
     db = get_db()
 
-    rows = list(db.activities.find({
-        "user_id": g.user_id,
-        "activity_date": {"$gte": from_date}
-    }).sort("activity_date", 1))
+    pipeline = [
+        {"$match": {"user_id": g.user_id, "activity_date": {"$gte": from_date}}},
+        {
+            "$facet": {
+                "daily": [
+                    {
+                        "$group": {
+                            "_id": "$activity_date",
+                            "steps": {"$sum": "$steps"},
+                            "distance_km": {"$sum": "$distance_km"},
+                            "active_minutes": {"$sum": "$duration_minutes"},
+                            "calories_burned": {"$sum": "$calories_burned"},
+                            "count": {"$sum": 1},
+                        }
+                    },
+                    {"$sort": {"_id": 1}},
+                    {
+                        "$project": {
+                            "_id": 0,
+                            "date": "$_id",
+                            "steps": 1,
+                            "distance_km": {"$round": ["$distance_km", 2]},
+                            "active_minutes": {"$round": ["$active_minutes", 1]},
+                            "calories_burned": {"$round": ["$calories_burned", 1]},
+                            "count": 1,
+                        }
+                    }
+                ],
+                "type_counts": [
+                    {
+                        "$group": {
+                            "_id": {"$ifNull": ["$activity_type", "other"]},
+                            "count": {"$sum": 1}
+                        }
+                    }
+                ],
+                "totals": [
+                    {
+                        "$group": {
+                            "_id": None,
+                            "steps": {"$sum": "$steps"},
+                            "distance_km": {"$sum": "$distance_km"},
+                            "active_minutes": {"$sum": "$duration_minutes"},
+                            "calories_burned": {"$sum": "$calories_burned"},
+                            "count": {"$sum": 1},
+                        }
+                    }
+                ]
+            }
+        }
+    ]
 
-    # Daily aggregation
-    daily = {}
-    type_counts = defaultdict(int)
-    totals = {"steps": 0, "distance_km": 0, "active_minutes": 0, "calories_burned": 0, "count": 0}
+    res = list(db.activities.aggregate(pipeline))
+    facet_data = res[0] if res else {}
 
-    for r in rows:
-        d = r["activity_date"]
-        if d not in daily:
-            daily[d] = {"date": d, "steps": 0, "distance_km": 0, "active_minutes": 0, "calories_burned": 0, "count": 0}
-        daily[d]["steps"] += r.get("steps", 0) or 0
-        daily[d]["distance_km"] += r.get("distance_km", 0) or 0
-        daily[d]["active_minutes"] += r.get("duration_minutes", 0) or 0
-        daily[d]["calories_burned"] += r.get("calories_burned", 0) or 0
-        daily[d]["count"] += 1
-
-        type_counts[r.get("activity_type", "other")] += 1
-
-        totals["steps"] += r.get("steps", 0) or 0
-        totals["distance_km"] += r.get("distance_km", 0) or 0
-        totals["active_minutes"] += r.get("duration_minutes", 0) or 0
-        totals["calories_burned"] += r.get("calories_burned", 0) or 0
-        totals["count"] += 1
+    daily = facet_data.get("daily", [])
+    type_counts = {item["_id"]: item["count"] for item in facet_data.get("type_counts", [])}
+    totals_raw = facet_data.get("totals", [])
+    if totals_raw:
+        totals = {
+            "steps": totals_raw[0].get("steps", 0),
+            "distance_km": round(totals_raw[0].get("distance_km", 0) or 0, 2),
+            "active_minutes": round(totals_raw[0].get("active_minutes", 0) or 0, 1),
+            "calories_burned": round(totals_raw[0].get("calories_burned", 0) or 0, 1),
+            "count": totals_raw[0].get("count", 0),
+        }
+    else:
+        totals = {"steps": 0, "distance_km": 0, "active_minutes": 0, "calories_burned": 0, "count": 0}
 
     return jsonify({
-        "daily": sorted(daily.values(), key=lambda x: x["date"]),
-        "type_counts": dict(type_counts),
+        "daily": daily,
+        "type_counts": type_counts,
         "totals": totals,
     })

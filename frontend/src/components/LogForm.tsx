@@ -19,6 +19,68 @@ interface LogResult {
   error?: string;
 }
 
+/**
+ * Compresses an image file client-side using an offscreen canvas to reduce upload payload
+ * and prevent network timeouts on high-res camera captures.
+ */
+function compressImage(file: File, maxWidth = 1280, maxHeight = 1280, quality = 0.8): Promise<File | Blob> {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+      return resolve(file);
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let { width, height } = img;
+
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return resolve(file);
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob && blob.size < file.size) {
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 interface LogFormProps {
   onSuccess?: (result: LogResult) => void;
 }
@@ -93,8 +155,12 @@ export default function LogForm({ onSuccess }: LogFormProps) {
         if (!res.ok) throw new Error(data.error || "Analysis failed");
       } else if (mode === "photo") {
         if (!selectedFile) throw new Error("Please upload or capture a photo first");
+        
+        // Compress image client-side before sending over network to Gemini
+        const fileToSend = await compressImage(selectedFile);
+
         const formData = new FormData();
-        formData.append("image", selectedFile);
+        formData.append("image", fileToSend);
         formData.append("meal_type", mealType);
 
         const res = await apiPost("/api/analyze-image", formData);
