@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { apiPost } from "@/lib/api";
+import { apiPost, apiFetch } from "@/lib/api";
 
 interface Goal {
   daily_calorie_goal: number;
@@ -71,16 +71,45 @@ export default function GoalForm() {
     setMealPlan(null);
     setError("");
     try {
-      const res = await apiPost("/api/goals/meal-plan", goal);
+      // Request async background generation (returns 202 Accepted + job_id)
+      const res = await apiPost("/api/goals/meal-plan?async=true", goal);
       const data = await res.json();
-      if (res.ok) {
+
+      if (res.status === 202 && data.job_id) {
+        // Poll status every 1.5s
+        let attempts = 0;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const statusRes = await apiFetch(`/api/goals/meal-plan/status/${data.job_id}`);
+            const statusData = await statusRes.json();
+            if (statusData.status === "completed") {
+              clearInterval(pollInterval);
+              setMealPlan(statusData.plan);
+              setLoading(false);
+            } else if (statusData.status === "failed") {
+              clearInterval(pollInterval);
+              setError(statusData.error || "Failed to generate meal plan.");
+              setLoading(false);
+            } else if (attempts >= 30) {
+              clearInterval(pollInterval);
+              setError("Meal plan generation timed out. Please try again.");
+              setLoading(false);
+            }
+          } catch (pollErr: any) {
+            clearInterval(pollInterval);
+            setError(pollErr.message || "Failed polling meal plan status.");
+            setLoading(false);
+          }
+        }, 1500);
+      } else if (res.ok) {
         setMealPlan(data.plan);
+        setLoading(false);
       } else {
         throw new Error(data.error || "Failed to generate meal plan.");
       }
     } catch (err: any) {
       setError(err.message || "Could not generate meal plan. Check API connection.");
-    } finally {
       setLoading(false);
     }
   };

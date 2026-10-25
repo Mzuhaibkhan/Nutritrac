@@ -8,15 +8,22 @@ from ..schemas import PredictionSchema
 ml_bp = Blueprint("ml", __name__)
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "../../ml/model.pkl")
+
+# Preload ML model at startup to eliminate cold-start latency
 _model = None
+try:
+    if os.path.exists(MODEL_PATH):
+        _model = joblib.load(MODEL_PATH)
+except Exception:
+    _model = None
 
 
 def load_model():
     global _model
-    if _model is None:
+    if _model is None and os.path.exists(MODEL_PATH):
         try:
             _model = joblib.load(MODEL_PATH)
-        except FileNotFoundError:
+        except Exception:
             _model = None
     return _model
 
