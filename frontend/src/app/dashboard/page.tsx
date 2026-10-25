@@ -78,8 +78,33 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
 
-    const fetchDashboard = async () => {
+    const cacheKey = `nutritrack_dash_${user.id}_${today}_${range}`;
+
+    // 1. Stale-While-Revalidate: Instant hydrate from session cache if available
+    let hasCache = false;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.logs) setLogs(parsed.logs);
+        if (parsed.goals) setGoals(parsed.goals);
+        if (parsed.dailyNutrition) setDailyNutrition(parsed.dailyNutrition);
+        if (parsed.dailyActivities) setDailyActivities(parsed.dailyActivities);
+        if (parsed.summary) setSummary(parsed.summary);
+        if (parsed.activitySummary) setActivitySummary(parsed.activitySummary);
+        hasCache = true;
+        setLoading(false);
+      }
+    } catch {
+      // Ignore cache read failures
+    }
+
+    if (!hasCache) {
       setLoading(true);
+    }
+
+    // 2. Fresh fetch in background to revalidate data
+    const fetchDashboard = async () => {
       try {
         const [logsRes, analyticsRes, goalsRes, activitiesRes] = await Promise.all([
           apiFetch(`/api/logs?date=${today}`),
@@ -88,15 +113,22 @@ export default function DashboardPage() {
           apiFetch(`/api/activities?date=${today}`)
         ]);
 
+        let updatedLogs = logs;
+        let updatedGoals = goals;
+        let updatedDailyNutrition: any[] = [];
+        let updatedDailyActivities: any[] = [];
+        let updatedSummary: DaySummary | null = null;
+        let updatedActivitySummary: ActivitySummary | null = null;
+
         if (logsRes.ok) {
-          const d = await logsRes.json();
-          setLogs(d);
+          updatedLogs = await logsRes.json();
+          setLogs(updatedLogs);
         }
 
         if (goalsRes.ok) {
           const gData = await goalsRes.json();
           if (gData && gData.id) {
-            setGoals({
+            updatedGoals = {
               calorie_goal: gData.daily_calorie_goal || 2000,
               protein_goal_g: gData.daily_protein_goal_g || 150,
               carbs_goal_g: gData.daily_carbs_goal_g || 250,
@@ -104,56 +136,78 @@ export default function DashboardPage() {
               budget_inr: gData.daily_budget_usd || 500, // Using field as INR budget
               step_goal: gData.daily_step_goal || 10000,
               active_min_goal: gData.daily_active_minutes_goal || 30
-            });
+            };
+            setGoals(updatedGoals);
           }
         }
 
         if (analyticsRes.ok) {
           const d = await analyticsRes.json();
-          setDailyNutrition(d.daily_nutrition || []);
-          setDailyActivities(d.daily_activities || []);
+          updatedDailyNutrition = d.daily_nutrition || [];
+          updatedDailyActivities = d.daily_activities || [];
+          setDailyNutrition(updatedDailyNutrition);
+          setDailyActivities(updatedDailyActivities);
           
           // Calculate today's intake summary
-          const todayNutrition = (d.daily_nutrition || []).find((x: any) => x.date === today);
+          const todayNutrition = updatedDailyNutrition.find((x: any) => x.date === today);
           if (todayNutrition) {
-            setSummary({
+            updatedSummary = {
               total_calories: todayNutrition.calories || 0,
               total_protein: todayNutrition.protein_g || 0,
               total_carbs: todayNutrition.carbs_g || 0,
               total_fats: todayNutrition.fats_g || 0,
               total_spend: todayNutrition.cost || 0,
-              meal_count: logs.length
-            });
+              meal_count: Array.isArray(updatedLogs) ? updatedLogs.length : 0
+            };
           } else {
-            setSummary({
+            updatedSummary = {
               total_calories: 0,
               total_protein: 0,
               total_carbs: 0,
               total_fats: 0,
               total_spend: 0,
               meal_count: 0
-            });
+            };
           }
+          setSummary(updatedSummary);
         }
 
         if (activitiesRes.ok) {
           const acts = await activitiesRes.json();
-          const todaySummary = acts.reduce((acc: any, act: any) => {
-            acc.steps += act.steps || 0;
-            acc.calories_burned += act.calories_burned || 0;
-            acc.active_minutes += act.duration_minutes || 0;
-            return acc;
-          }, { steps: 0, calories_burned: 0, active_minutes: 0 });
-          setActivitySummary(todaySummary);
+          if (Array.isArray(acts)) {
+            updatedActivitySummary = acts.reduce((acc: any, act: any) => {
+              acc.steps += act.steps || 0;
+              acc.calories_burned += act.calories_burned || 0;
+              acc.active_minutes += act.duration_minutes || 0;
+              return acc;
+            }, { steps: 0, calories_burned: 0, active_minutes: 0 });
+            setActivitySummary(updatedActivitySummary);
+          }
+        }
+
+        // 3. Update session cache for instant revisit
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            logs: updatedLogs,
+            goals: updatedGoals,
+            dailyNutrition: updatedDailyNutrition,
+            dailyActivities: updatedDailyActivities,
+            summary: updatedSummary,
+            activitySummary: updatedActivitySummary,
+            cachedAt: Date.now()
+          }));
+        } catch {
+          // Quota exceeded or storage unavailable
         }
       } catch (err) {
         console.error("Dashboard loading error", err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchDashboard();
-  }, [range, user]);
+  }, [range, user, today]);
 
   const MACRO_STATS = [
     { label: "Calories", val: Math.round(summary?.total_calories || 0), unit: "kcal", goal: goals.calorie_goal, color: "var(--accent-3)", tag: "tag-3" },
