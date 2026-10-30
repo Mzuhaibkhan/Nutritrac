@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ClerkProvider } from "@clerk/nextjs";
 import AuthProvider from "@/components/AuthProvider";
 import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
@@ -20,34 +21,36 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>
-        <Suspense
-          fallback={
-            <div
-              style={{
-                minHeight: "100vh",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "var(--base-100)",
-              }}
-            >
-              <p
-                className="mono"
-                style={{ color: "var(--base-secondary-dark)" }}
+    <ClerkProvider>
+      <html lang="en">
+        <body>
+          <Suspense
+            fallback={
+              <div
+                style={{
+                  minHeight: "100vh",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: "var(--base-100)",
+                }}
               >
-                Loading...
-              </p>
-            </div>
-          }
-        >
-          <AuthProvider>
-            {children}
-            <CookieBanner />
-          </AuthProvider>
-        </Suspense>
-      </body>
-    </html>
+                <p
+                  className="mono"
+                  style={{ color: "var(--base-secondary-dark)" }}
+                >
+                  Loading...
+                </p>
+              </div>
+            }
+          >
+            <AuthProvider>
+              {children}
+              <CookieBanner />
+            </AuthProvider>
+          </Suspense>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
