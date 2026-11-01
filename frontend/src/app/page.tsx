@@ -6,7 +6,7 @@ import Link from "next/link";
 
 const SKILLS = [
   ["Calorie Tracking", "Macro Analysis", "AI Nutrition", "Smart Budget", "Meal Planning", "Food History"],
-  ["Gemini AI", "Random Forest", "Supabase", "Real-time Logs", "Visual Charts"],
+  ["Gemini AI", "Random Forest", "Clerk Auth", "Real-time Logs", "Visual Charts"],
   ["Protein Goals", "Carb Tracking", "Fat Monitoring", "Fiber Intake", "Spending Trends", "Progress Compare"],
 ];
 const SKILL_COLORS = ["tag-1", "tag-2", "tag-3"];
