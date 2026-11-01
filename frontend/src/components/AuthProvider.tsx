@@ -1,18 +1,24 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import React, { createContext, useContext } from "react";
+import { useUser, useClerk } from "@clerk/nextjs";
+
+interface AdaptedUser {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+}
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AdaptedUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  session: null,
   loading: true,
   signOut: async () => {},
 });
@@ -26,40 +32,27 @@ export default function AuthProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const { user: clerkUser, isLoaded } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const user: AdaptedUser | null = clerkUser
+    ? {
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress,
+        user_metadata: {
+          full_name: clerkUser.fullName || undefined,
+          avatar_url: clerkUser.imageUrl || undefined,
+        },
+      }
+    : null;
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    await clerkSignOut();
     window.location.href = "/";
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading: !isLoaded, signOut }}>
       {children}
     </AuthContext.Provider>
   );

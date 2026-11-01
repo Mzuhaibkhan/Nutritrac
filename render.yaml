@@ -11,18 +11,15 @@ services:
       - key: MONGODB_DB_NAME
         value: nutritrack
 
-      # ── Supabase (auth) ─────────────────────────────────────
-      - key: SUPABASE_URL
+      # ── Clerk (auth) ────────────────────────────────────────
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false # Set in Render Dashboard (inlined at Docker build time)
+      - key: CLERK_SECRET_KEY
         sync: false # Set in Render Dashboard
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false # Set in Render Dashboard
-      - key: SUPABASE_KEY
-        sync: false # Set in Render Dashboard (fallback for SUPABASE_SERVICE_ROLE_KEY)
-      # These NEXT_PUBLIC_* vars are inlined at Docker build time by Next.js
-      - key: NEXT_PUBLIC_SUPABASE_URL
-        sync: false # Set in Render Dashboard (same value as SUPABASE_URL)
-      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
-        sync: false # Set in Render Dashboard
+      - key: CLERK_JWT_KEY
+        sync: false # Optional PEM Public Key from Clerk Dashboard for fast offline verification
+      - key: CLERK_JWKS_URL
+        sync: false # Optional JWKS URL from Clerk Dashboard
 
       # ── AI / LLM keys (at least one recommended) ───────────
       - key: GEMINI_API_KEY

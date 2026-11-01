@@ -32,7 +32,7 @@ export default function PrivacyPolicyPage() {
                   We collect personal information that you voluntarily provide to us when you register, log in, or use the App. The personal information we collect includes:
                 </p>
                 <ul style={{ paddingLeft: "1.5rem", marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  <li><strong>Account Credentials:</strong> We use Supabase Auth to handle Google OAuth and email logins. This includes your email address, name, and profile picture.</li>
+                  <li><strong>Account Credentials:</strong> We use Clerk to handle Google OAuth and email logins. This includes your email address, name, and profile picture.</li>
                   <li><strong>Health & Nutrition Data:</strong> Meals logged manually or via Gemini AI analysis, calories, macronutrients (proteins, carbs, fats), and cost.</li>
                   <li><strong>Activity Data:</strong> Step counts, active minutes, duration, distance, heart rate, and workouts logged manually or synced from third-party apps like Strava.</li>
                 </ul>
@@ -44,7 +44,7 @@ export default function PrivacyPolicyPage() {
                   We use personal information collected via our App for a variety of business purposes described below:
                 </p>
                 <ul style={{ paddingLeft: "1.5rem", marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  <li>To facilitate account creation and logon process (Google OAuth / Supabase Auth).</li>
+                  <li>To facilitate account creation and logon process (Google OAuth / Clerk Auth).</li>
                   <li>To track, calculate, and display nutrition intake, cost metrics, and activity performance.</li>
                   <li>To generate personalized, AI-powered meal plans and health insights (using Google Gemini API).</li>
                   <li>To provide user data isolation so that each user has access only to their own files.</li>

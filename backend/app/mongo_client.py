@@ -1,7 +1,7 @@
 """
 MongoDB client for NutriTrack AI.
 Uses MongoDB Atlas (free M0 cluster) for all data storage.
-Supabase is kept ONLY for authentication (Google OAuth).
+Clerk is used for authentication (Google OAuth).
 """
 import os
 from datetime import datetime, timezone
