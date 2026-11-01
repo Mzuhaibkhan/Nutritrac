@@ -19,7 +19,7 @@ flowchart TD
     
     subgraph External["External Services"]
         MongoDB[(MongoDB Atlas\nData Persistence)]
-        Supabase[Supabase\nAuthentication & JWT]
+        Clerk[Clerk\nAuthentication & JWT]
         Gemini[Google Gemini API\nVision & Text LLM]
         Strava[Strava API\nActivity Sync]
     end
@@ -31,7 +31,7 @@ flowchart TD
     Flask -- "Predict Score" --> ML
     
     Flask -- "Store/Retrieve User Data" --> MongoDB
-    Flask -- "Verify JWT Tokens" --> Supabase
+    Flask -- "Verify JWT Tokens" --> Clerk
     Flask -- "Analyze Meals & Images" --> Gemini
     Flask -- "Sync Workouts" --> Strava
 ```
@@ -39,7 +39,7 @@ flowchart TD
 ## Tech Stack
 - **Frontend**: Next.js 16, React 19, GSAP & Lenis (Smooth Scrolling)
 - **Backend**: Python, Flask, Scikit-learn (ML modeling)
-- **Auth**: Supabase (Google OAuth)
+- **Auth**: Clerk (Google OAuth & Sessions)
 - **Database**: MongoDB Atlas
 - **AI/ML**: Google Generative AI (Gemini), OpenAI, xAI Grok
 - **Deployment**: Docker, Nginx, Render
@@ -47,7 +47,7 @@ flowchart TD
 ## Prerequisites
 - Node.js (v20+)
 - Python (3.11+)
-- Supabase Project (Authentication)
+- Clerk Application (Authentication)
 - MongoDB Atlas cluster (Database)
 - At least one AI API key (Gemini, OpenAI, or Grok - optional, falls back to offline heuristics)
 
@@ -56,7 +56,7 @@ Copy the `.env.example` file to create a `.env` file in the root directory:
 ```bash
 cp .env.example .env
 ```
-Update the `.env` file with your `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MONGODB_URI`, and at least one AI key.
+Update the `.env` file with your `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `MONGODB_URI`, and at least one AI key.
 
 ## Local Development
 
@@ -94,8 +94,9 @@ This project is configured to deploy as a **single Docker web service** on Rende
 3. Render will automatically detect the `Dockerfile`.
 4. Set these environment variables in the Render Dashboard:
    - `MONGODB_URI` - your MongoDB Atlas connection string.
-   - `SUPABASE_URL` - your Supabase project URL.
-   - `SUPABASE_SERVICE_ROLE_KEY` - your Supabase service role key.
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - your Clerk Publishable Key (inlined at Docker build time).
+   - `CLERK_SECRET_KEY` - your Clerk Secret Key.
+   - `CLERK_JWT_KEY` - (optional) your Clerk PEM Public Key.
    - `GEMINI_API_KEY` - (optional) your Gemini API key.
 5. Deploy.
 
