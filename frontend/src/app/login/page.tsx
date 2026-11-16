@@ -11,30 +11,88 @@ function LoginContent() {
   return (
     <SignIn
       routing="hash"
+      signUpUrl="/login"
       fallbackRedirectUrl={redirect}
       appearance={{
         elements: {
+          rootBox: {
+            width: "100%",
+            maxWidth: "420px",
+          },
           card: {
-            backgroundColor: "#111111",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "16px",
-            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.5)",
+            backgroundColor: "#ffffff",
+            border: "1px solid rgba(10, 10, 10, 0.08)",
+            borderRadius: "20px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.06)",
+            padding: "2rem",
           },
           headerTitle: {
-            color: "#ffffff",
+            color: "var(--base-300, #0a0a0a)",
+            fontFamily: "var(--font-heading, 'Host Grotesk', sans-serif)",
+            fontWeight: 700,
+            fontSize: "1.5rem",
+            letterSpacing: "-0.02em",
           },
           headerSubtitle: {
-            color: "#888888",
+            color: "var(--base-secondary-dark, #686560)",
+            fontSize: "0.875rem",
           },
           socialButtonsBlockButton: {
-            backgroundColor: "#1a1a1a",
-            borderColor: "rgba(255, 255, 255, 0.15)",
-            color: "#ffffff",
+            backgroundColor: "var(--base-100, #f9f4eb)",
+            borderColor: "rgba(10, 10, 10, 0.1)",
+            color: "var(--base-300, #0a0a0a)",
+            borderRadius: "12px",
+            fontWeight: 500,
+          },
+          socialButtonsBlockButtonText: {
+            color: "var(--base-300, #0a0a0a)",
+            fontWeight: 500,
+          },
+          dividerRow: {
+            margin: "1.25rem 0",
+          },
+          dividerLine: {
+            backgroundColor: "rgba(10, 10, 10, 0.1)",
+          },
+          dividerText: {
+            color: "var(--base-secondary-dark, #686560)",
+            fontSize: "0.75rem",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          },
+          formFieldLabel: {
+            color: "var(--base-300, #0a0a0a)",
+            fontSize: "0.825rem",
+            fontWeight: 500,
+          },
+          formFieldInput: {
+            backgroundColor: "var(--base-100, #f9f4eb)",
+            borderColor: "rgba(10, 10, 10, 0.12)",
+            color: "var(--base-300, #0a0a0a)",
+            borderRadius: "10px",
+            fontSize: "0.875rem",
           },
           formButtonPrimary: {
-            backgroundColor: "var(--accent-3, #b4f481)",
+            backgroundColor: "var(--accent-3, #ffdd94)",
             color: "#0a0a0a",
             fontWeight: 600,
+            borderRadius: "12px",
+            border: "none",
+            boxShadow: "none",
+          },
+          footer: {
+            backgroundColor: "transparent",
+          },
+          footerAction: {
+            backgroundColor: "transparent",
+          },
+          footerActionText: {
+            color: "var(--base-secondary-dark, #686560)",
+          },
+          footerActionLink: {
+            color: "var(--base-300, #0a0a0a)",
+            fontWeight: 600,
+            textDecoration: "underline",
           },
         },
       }}
@@ -78,7 +136,7 @@ export default function LoginPage() {
               fontFamily: "var(--font-heading, sans-serif)",
               fontSize: "1.25rem",
               fontWeight: 700,
-              color: "var(--base-secondary-light, #ffffff)",
+              color: "var(--base-300, #0a0a0a)",
               letterSpacing: "-0.02em",
             }}
           >
