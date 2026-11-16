@@ -1,17 +1,73 @@
 "use client";
-import { Suspense } from "react";
-import { SignIn } from "@clerk/nextjs";
+import { Suspense, useEffect } from "react";
+import { SignIn, useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
+  const { isSignedIn, isLoaded } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace(redirect);
+    }
+  }, [isLoaded, isSignedIn, redirect, router]);
+
+  if (isLoaded && isSignedIn) {
+    return (
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          border: "1px solid rgba(10, 10, 10, 0.08)",
+          borderRadius: "20px",
+          padding: "2.5rem 2rem",
+          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.06)",
+          textAlign: "center",
+          maxWidth: 420,
+          width: "100%",
+        }}
+      >
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            backgroundColor: "var(--accent-3, #ffdd94)",
+            margin: "0 auto 1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            fontSize: "1.2rem",
+          }}
+        >
+          ✓
+        </div>
+        <h3
+          style={{
+            fontSize: "1.25rem",
+            fontWeight: 700,
+            color: "var(--base-300, #0a0a0a)",
+            marginBottom: "0.5rem",
+          }}
+        >
+          Successfully Signed In
+        </h3>
+        <p style={{ color: "var(--base-secondary-dark, #686560)", fontSize: "0.875rem" }}>
+          Redirecting to dashboard...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <SignIn
       path="/login"
       signUpUrl="/login"
+      forceRedirectUrl={redirect}
       fallbackRedirectUrl={redirect}
       appearance={{
         elements: {
