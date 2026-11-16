@@ -4,6 +4,7 @@ services:
     name: nutritrack
     runtime: docker
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
     envVars:
       # ── MongoDB ──────────────────────────────────────────────
       - key: MONGODB_URI
@@ -35,10 +36,10 @@ services:
       - key: STRAVA_CLIENT_SECRET
         sync: false # Set in Render Dashboard (optional)
       - key: STRAVA_REDIRECT_URI
-        value: https://nutritrack.onrender.com/api/strava/callback
+        value: https://nutritrac-o41e.onrender.com/api/strava/callback
       - key: FRONTEND_URL
-        value: https://nutritrack.onrender.com
+        value: https://nutritrac-o41e.onrender.com
 
       # ── CORS (same-origin via nginx, but set for safety) ────
       - key: CORS_ORIGINS
-        value: https://nutritrack.onrender.com
+        value: https://nutritrac-o41e.onrender.com,https://nutritrack.onrender.com
