@@ -66,7 +66,7 @@ function LoginContent() {
   return (
     <SignIn
       path="/login"
-      signUpUrl="/login"
+      signUpUrl="/sign-up"
       forceRedirectUrl={redirect}
       fallbackRedirectUrl={redirect}
       appearance={{
