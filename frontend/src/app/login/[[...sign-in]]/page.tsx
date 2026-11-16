@@ -10,7 +10,7 @@ function LoginContent() {
 
   return (
     <SignIn
-      routing="hash"
+      path="/login"
       signUpUrl="/login"
       fallbackRedirectUrl={redirect}
       appearance={{
